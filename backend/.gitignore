@@ -1,0 +1,27 @@
+node_modules
+
+.env
+.env.*
+
+docker/
+Dockerfile
+Dockerfile.prod
+docker-compose.yml
+docker-compose.prod.yml
+
+# Logs
+logs/
+*.log
+
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+models/
+
+
+src/modules/moderation/config/moderation-patterns.config.ts
