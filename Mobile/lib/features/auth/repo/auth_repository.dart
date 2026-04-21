@@ -7,8 +7,43 @@ class AuthRepository {
   final AuthMobileApi _authMobileApi;
   final AuthCommonApi _authCommonApi;
   final AuthWebApi _authWebApi;
+  final Dio _dio;
 
-  AuthRepository(this._authMobileApi, this._authCommonApi, this._authWebApi);
+  AuthRepository(
+    this._authMobileApi,
+    this._authCommonApi,
+    this._authWebApi,
+    this._dio,
+  );
+
+  /// Khớp POST /auth/forgot-password (email link reset).
+  Future<void> forgotPassword(String email) async {
+    try {
+      await _dio.post<Object>(
+        '/auth/forgot-password',
+        data: {'email': email.trim().toLowerCase()},
+      );
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] ?? e.message ?? 'Forgot password failed';
+      throw Exception(msg);
+    }
+  }
+
+  /// Khớp POST /auth/reset-password (token từ link email).
+  Future<void> resetPassword({
+    required String token,
+    required String newPassword,
+  }) async {
+    try {
+      await _dio.post<Object>(
+        '/auth/reset-password',
+        data: {'token': token, 'newPassword': newPassword},
+      );
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] ?? e.message ?? 'Reset password failed';
+      throw Exception(msg);
+    }
+  }
 
   /// Đăng xuất mọi thiết bị (OpenAPI: POST /auth/logout-all)
   Future<void> logoutAll() async {

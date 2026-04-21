@@ -11,6 +11,7 @@ import 'package:mobile_app_doan/home/widgets/article.dart';
 import 'package:mobile_app_doan/home/widgets/dialog/dialog_edit_post.dart';
 import 'package:mobile_app_doan/home/widgets/dialog/edit_profile_dialog.dart';
 import 'package:mobile_app_doan/home/widgets/post_quotes_sheet.dart';
+import 'package:mobile_app_doan/utils/network_image_url.dart';
 import 'package:openapi/openapi.dart';
 
 class CustomerProfileTab extends StatefulWidget {
@@ -51,6 +52,9 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
   }
 
   Widget _buildProfileUI(ProfileResponseDto profile) {
+    final avatarForNetwork = profile.avatarUrl;
+    final showAvatarNetwork = isHttpImageUrl(avatarForNetwork);
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: SafeArea(
@@ -89,13 +93,14 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
                   children: [
                     CircleAvatar(
                       radius: 44,
-                      backgroundImage: profile.avatarUrl != null
-                          ? NetworkImage(profile.avatarUrl!)
+                      backgroundImage: showAvatarNetwork
+                          ? NetworkImage(avatarForNetwork!)
                           : null,
                       backgroundColor: Colors.teal,
-                      child: profile.avatarUrl == null
+                      child: !showAvatarNetwork
                           ? Text(
-                              profile.displayName != null
+                              profile.displayName != null &&
+                                      profile.displayName!.isNotEmpty
                                   ? profile.displayName![0]
                                   : "?",
                               style: const TextStyle(
@@ -122,6 +127,25 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
                         _statItem("7", "Bài đăng"),
                         SizedBox(width: 100),
                         _statItem("8", "Đã đánh giá"),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () => Get.toNamed('/orders'),
+                          icon: const Icon(Icons.receipt_long, size: 18),
+                          label: const Text('Đơn hàng'),
+                        ),
+                        if (profile.role == UserRole.provider)
+                          OutlinedButton.icon(
+                            onPressed: () => Get.toNamed('/saved-posts'),
+                            icon: const Icon(Icons.bookmark_outline, size: 18),
+                            label: const Text('Đã lưu'),
+                          ),
                       ],
                     ),
 

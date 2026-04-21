@@ -2,6 +2,8 @@ import 'package:get/get.dart';
 import 'package:mobile_app_doan/core/token_helper.dart';
 import 'package:mobile_app_doan/features/auth/repo/auth_repository.dart';
 import 'package:mobile_app_doan/features/auth/services/auth_service.dart';
+import 'package:mobile_app_doan/home/controllers/chat_controller.dart';
+import 'package:mobile_app_doan/home/controllers/notification_controller.dart';
 import 'package:mobile_app_doan/home/pages/model/user.dart';
 import 'package:mobile_app_doan/home/repo/user_repository.dart';
 import 'package:mobile_app_doan/main.dart';
@@ -48,6 +50,13 @@ class AuthController extends GetxController {
       await _syncProfileFromServer();
 
       isLoggedIn.value = true;
+
+      if (Get.isRegistered<NotificationController>()) {
+        await Get.find<NotificationController>().connectNotificationSocket();
+      }
+      if (Get.isRegistered<ChatController>()) {
+        await Get.find<ChatController>().connectChatSocket();
+      }
 
       Get.snackbar("Thành công", "Đăng nhập thành công");
       Get.offAllNamed("/home");
@@ -96,6 +105,12 @@ class AuthController extends GetxController {
       print('❌ Logout-all error: $e');
       hasError = true;
     } finally {
+      if (Get.isRegistered<NotificationController>()) {
+        await Get.find<NotificationController>().disconnectNotificationSocket();
+      }
+      if (Get.isRegistered<ChatController>()) {
+        await Get.find<ChatController>().disconnectChatSocket();
+      }
       await TokenHelper.clearTokens();
       await authService.clearTokens();
       await authService.clearUser();
@@ -130,6 +145,12 @@ class AuthController extends GetxController {
       print("❌ Logout error: $e");
       hasError = true;
     } finally {
+      if (Get.isRegistered<NotificationController>()) {
+        await Get.find<NotificationController>().disconnectNotificationSocket();
+      }
+      if (Get.isRegistered<ChatController>()) {
+        await Get.find<ChatController>().disconnectChatSocket();
+      }
       await authService.clearTokens();
       await authService.clearUser();
 
@@ -159,6 +180,27 @@ class AuthController extends GetxController {
         userName.value = user.userName ?? '';
         userEmail.value = user.userEmail ?? '';
       }
+    }
+  }
+
+  Future<void> forgotPassword(String email) async {
+    isLoading.value = true;
+    try {
+      await repository.forgotPassword(email);
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> resetPassword({
+    required String token,
+    required String newPassword,
+  }) async {
+    isLoading.value = true;
+    try {
+      await repository.resetPassword(token: token, newPassword: newPassword);
+    } finally {
+      isLoading.value = false;
     }
   }
 

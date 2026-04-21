@@ -34,7 +34,7 @@ class _Auth_ScreenState extends State<Auth_Screen> {
       case 'register':
         currentPage = RegisterPage(
           key: const ValueKey('register'),
-
+          onBack: () => changeScreen('start'),
           onLogin: () => changeScreen('login'),
         );
         break;

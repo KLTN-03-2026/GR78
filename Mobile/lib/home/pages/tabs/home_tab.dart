@@ -25,6 +25,16 @@ class _HomeTabState extends State<HomeTab> {
   String selectedCategory = "Tất cả";
   bool _loadMoreScheduled = false;
 
+  @override
+  void initState() {
+    super.initState();
+    // Lần vào trang chủ (sau đăng nhập hoặc mở app): luôn tải feed — trước đây
+    // không gọi API nên danh sách trống / lỗi hiển thị.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      postController.loadFeed();
+    });
+  }
+
   final List<Map<String, String>> categories = [
     {"icon": "⚡", "name": "Điện"},
     {"icon": "🎨", "name": "Sơn"},
