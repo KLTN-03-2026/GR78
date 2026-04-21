@@ -81,8 +81,12 @@ class _PostQuotesBodyState extends State<_PostQuotesBody> {
                   final id = _id(q);
                   final price = q['price'];
                   final desc = stringField(q, ['description', 'message']);
-                  final status = q['status'] ?? q['state'] ?? '';
-                  return Card(
+                          final status = (q['status'] ?? q['state'] ?? '')
+                              .toString()
+                              .toLowerCase();
+                          final canRequestOrder = status == 'accepted_for_chat' ||
+                              status == 'revising';
+                          return Card(
                     child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: Column(
@@ -111,6 +115,18 @@ class _PostQuotesBodyState extends State<_PostQuotesBody> {
                                         },
                                   child: const Text('Chấp nhận'),
                                 ),
+                                if (canRequestOrder)
+                                  TextButton(
+                                    onPressed: qc.isLoading.value
+                                        ? null
+                                        : () async {
+                                            await qc.requestOrder(id);
+                                            await qc.loadPostQuotes(
+                                              widget.postId,
+                                            );
+                                          },
+                                    child: const Text('Yêu cầu đặt đơn'),
+                                  ),
                                 TextButton(
                                   onPressed: qc.isLoading.value
                                       ? null

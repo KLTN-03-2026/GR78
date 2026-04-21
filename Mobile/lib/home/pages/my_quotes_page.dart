@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:mobile_app_doan/home/controllers/order_controller.dart';
 import 'package:mobile_app_doan/home/controllers/quote_controller.dart';
 import 'package:mobile_app_doan/home/utils/parse_api_list.dart';
 import 'package:openapi/openapi.dart';
@@ -81,7 +82,64 @@ class _MyQuotesPageState extends State<MyQuotesPage> {
                 trailing: PopupMenuButton<String>(
                   onSelected: (v) async {
                     if (id.isEmpty) return;
-                    if (v == 'edit') {
+                    if (v == 'confirm_order') {
+                      await Get.find<OrderController>().confirmFromQuote(id);
+                      await qc.loadMyQuotes();
+                    } else if (v == 'revise') {
+                      final priceCtrl = TextEditingController(
+                        text: q['price']?.toString() ?? '',
+                      );
+                      final reasonCtrl = TextEditingController();
+                      final ok = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Chào giá lại'),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              TextField(
+                                controller: priceCtrl,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  labelText: 'Giá mới *',
+                                ),
+                              ),
+                              TextField(
+                                controller: reasonCtrl,
+                                decoration: const InputDecoration(
+                                  labelText: 'Lý do thay đổi',
+                                ),
+                              ),
+                            ],
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text('Hủy'),
+                            ),
+                            FilledButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: const Text('Gửi'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (ok == true && context.mounted) {
+                        final p = num.tryParse(priceCtrl.text.trim());
+                        if (p == null) {
+                          Get.snackbar('Lỗi', 'Giá không hợp lệ');
+                          return;
+                        }
+                        await qc.reviseQuote(
+                          id,
+                          price: p,
+                          changeReason: reasonCtrl.text.trim().isEmpty
+                              ? null
+                              : reasonCtrl.text.trim(),
+                        );
+                        await qc.loadMyQuotes();
+                      }
+                    } else if (v == 'edit') {
                       final priceCtrl = TextEditingController(
                         text: q['price']?.toString() ?? '',
                       );
@@ -140,11 +198,36 @@ class _MyQuotesPageState extends State<MyQuotesPage> {
                       await qc.deleteQuoteById(id);
                     }
                   },
-                  itemBuilder: (ctx) => const [
-                    PopupMenuItem(value: 'edit', child: Text('Sửa')),
-                    PopupMenuItem(value: 'cancel', child: Text('Hủy báo giá')),
-                    PopupMenuItem(value: 'delete', child: Text('Xóa')),
-                  ],
+                  itemBuilder: (ctx) {
+                    final st = (q['status'] ?? q['state'] ?? '')
+                        .toString()
+                        .toLowerCase();
+                    final items = <PopupMenuEntry<String>>[];
+                    if (st == 'order_requested') {
+                      items.add(
+                        const PopupMenuItem(
+                          value: 'confirm_order',
+                          child: Text('Xác nhận tạo đơn'),
+                        ),
+                      );
+                    }
+                    if (st == 'accepted_for_chat' || st == 'revising') {
+                      items.add(
+                        const PopupMenuItem(
+                          value: 'revise',
+                          child: Text('Chào giá lại'),
+                        ),
+                      );
+                    }
+                    if (st == 'pending') {
+                      items.add(const PopupMenuItem(value: 'edit', child: Text('Sửa')));
+                    }
+                    items.addAll(const [
+                      PopupMenuItem(value: 'cancel', child: Text('Hủy báo giá')),
+                      PopupMenuItem(value: 'delete', child: Text('Xóa')),
+                    ]);
+                    return items;
+                  },
                 ),
               ),
             );

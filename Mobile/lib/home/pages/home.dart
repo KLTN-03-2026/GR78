@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:mobile_app_doan/home/controllers/chat_controller.dart';
 import 'package:mobile_app_doan/home/controllers/notification_controller.dart';
 import 'package:mobile_app_doan/home/controllers/post_controller.dart';
 import 'package:mobile_app_doan/home/pages/tabs/home_tab.dart';
@@ -54,6 +55,9 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
               setState(() {
                 currentIndex = index;
               });
+              if (Get.isRegistered<ChatController>()) {
+                Get.find<ChatController>().loadConversations();
+              }
               break;
             case 3:
               setState(() {

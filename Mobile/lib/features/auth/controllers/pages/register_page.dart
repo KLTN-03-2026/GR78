@@ -10,8 +10,9 @@ import 'package:openapi/openapi.dart';
 
 class RegisterPage extends StatefulWidget {
   final VoidCallback onLogin;
+  final VoidCallback? onBack;
 
-  const RegisterPage({required this.onLogin, super.key});
+  const RegisterPage({required this.onLogin, this.onBack, super.key});
 
   @override
   State<RegisterPage> createState() => _RegisterPageState();
@@ -88,9 +89,9 @@ class _RegisterPageState extends State<RegisterPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white,
-      child: Column(
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Column(
         children: [
           // Header
           Container(
@@ -111,18 +112,19 @@ class _RegisterPageState extends State<RegisterPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (ModalRoute.of(context)?.canPop ?? false)
+                if (widget.onBack != null ||
+                    (ModalRoute.of(context)?.canPop ?? false)) ...[
                   IconButton(
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
-                    onPressed: () => Get.back<void>(),
+                    onPressed: widget.onBack ?? () => Get.back<void>(),
                     icon: const Icon(
                       Icons.arrow_back,
                       color: Colors.white,
                       size: 28,
                     ),
-                  )
-                else
+                  ),
+                ] else
                   const SizedBox(height: 8),
                 const Text(
                   "Đăng ký",

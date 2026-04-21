@@ -8,12 +8,19 @@ import 'package:mobile_app_doan/features/auth/controllers/pages/register_page.da
 import 'package:mobile_app_doan/features/auth/repo/auth_repository.dart';
 import 'package:mobile_app_doan/features/auth/services/auth_service.dart';
 import 'package:mobile_app_doan/features/api_console/pages/api_console_page.dart';
+import 'package:mobile_app_doan/features/auth/controllers/pages/forgot_password_page.dart';
+import 'package:mobile_app_doan/features/auth/controllers/pages/reset_password_page.dart';
+import 'package:mobile_app_doan/home/controllers/chat_controller.dart';
 import 'package:mobile_app_doan/home/controllers/notification_controller.dart';
+import 'package:mobile_app_doan/home/controllers/order_controller.dart';
 import 'package:mobile_app_doan/home/controllers/post_controller.dart';
 import 'package:mobile_app_doan/home/controllers/quote_controller.dart';
 import 'package:mobile_app_doan/home/controllers/user_controller.dart';
 import 'package:mobile_app_doan/home/pages/home.dart';
 import 'package:mobile_app_doan/home/pages/my_quotes_page.dart';
+import 'package:mobile_app_doan/home/pages/orders_page.dart';
+import 'package:mobile_app_doan/home/pages/saved_posts_page.dart';
+import 'package:mobile_app_doan/home/repo/backend_rest_repository.dart';
 import 'package:mobile_app_doan/home/repo/notification_repository.dart';
 import 'package:mobile_app_doan/home/repo/post_repository.dart';
 import 'package:mobile_app_doan/home/repo/quote_repository.dart';
@@ -52,6 +59,7 @@ Future<void> main() async {
     api.getAuthMobileApi(),
     api.getAuthCommonApi(),
     api.getAuthWebApi(),
+    dioInstance,
   );
   final profileRepo = ProfileRepository(api);
   final authService = AuthService();
@@ -88,6 +96,18 @@ Future<void> main() async {
   Get.put<NotificationController>(
     NotificationController(NotificationRepository(api)),
   );
+  if (authController.isLoggedIn.value) {
+    await Get.find<NotificationController>().connectNotificationSocket();
+  }
+
+  final rest = BackendRestRepository(dioInstance);
+  Get.put<BackendRestRepository>(rest, permanent: true);
+  Get.put<ChatController>(ChatController(rest), permanent: true);
+  Get.put<OrderController>(OrderController(rest), permanent: true);
+
+  if (authController.isLoggedIn.value) {
+    await Get.find<ChatController>().connectChatSocket();
+  }
 
   runApp(const MyApp());
 }
@@ -116,6 +136,13 @@ class MyApp extends StatelessWidget {
         ),
         GetPage(name: '/api', page: () => const ApiConsolePage()),
         GetPage(name: '/my-quotes', page: () => const MyQuotesPage()),
+        GetPage(name: '/orders', page: () => const OrdersPage()),
+        GetPage(name: '/saved-posts', page: () => const SavedPostsPage()),
+        GetPage(name: '/forgot-password', page: () => const ForgotPasswordPage()),
+        GetPage(
+          name: '/reset-password',
+          page: () => const ResetPasswordPage(),
+        ),
       ],
     );
   }

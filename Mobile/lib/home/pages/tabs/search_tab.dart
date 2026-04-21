@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:mobile_app_doan/home/controllers/user_controller.dart';
+import 'package:mobile_app_doan/home/repo/backend_rest_repository.dart';
 import 'package:mobile_app_doan/home/widgets/header.dart';
+import 'package:mobile_app_doan/utils/network_image_url.dart';
 
 class SearchTab extends StatefulWidget {
   const SearchTab({super.key});
@@ -15,8 +17,14 @@ class SearchTab extends StatefulWidget {
 
 class _SearchTabState extends State<SearchTab> {
   String searchQuery = '';
-  bool showFilters = false;
   Timer? _debounce;
+
+  /// `users` = GET /profile/search · `global` = GET /search
+  String _searchMode = 'users';
+
+  Map<String, dynamic>? _globalData;
+  bool _globalLoading = false;
+  String _globalError = '';
 
   final List<Map<String, dynamic>> trendingSearches = [
     {'text': 'Thợ điện', 'icon': '⚡'},
@@ -41,6 +49,34 @@ class _SearchTabState extends State<SearchTab> {
     {'name': 'Vệ sinh', 'icon': '🧹'},
   ];
 
+  Future<void> _runGlobalSearch(String q) async {
+    setState(() {
+      _globalLoading = true;
+      _globalError = '';
+    });
+    try {
+      final raw = await Get.find<BackendRestRepository>().globalSearch({
+        'q': q,
+        'limit': 8,
+      });
+      if (!mounted) return;
+      if (raw is Map) {
+        setState(() => _globalData = Map<String, dynamic>.from(raw));
+      } else {
+        setState(() => _globalData = null);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _globalError = e.toString();
+          _globalData = null;
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _globalLoading = false);
+    }
+  }
+
   void _onSearchInput(String value) {
     setState(() => searchQuery = value);
     _debounce?.cancel();
@@ -48,11 +84,37 @@ class _SearchTabState extends State<SearchTab> {
     final pc = Get.find<ProfileController>();
     if (trimmed.isEmpty) {
       pc.searchResults.value = null;
+      setState(() {
+        _globalData = null;
+        _globalError = '';
+      });
       return;
     }
     _debounce = Timer(const Duration(milliseconds: 450), () {
-      pc.searchProfiles(trimmed);
+      if (_searchMode == 'users') {
+        pc.searchProfiles(trimmed);
+      } else {
+        _runGlobalSearch(trimmed);
+      }
     });
+  }
+
+  void _setMode(String mode) {
+    if (_searchMode == mode) return;
+    setState(() {
+      _searchMode = mode;
+      _globalData = null;
+      _globalError = '';
+    });
+    Get.find<ProfileController>().searchResults.value = null;
+    final t = searchQuery.trim();
+    if (t.isNotEmpty) {
+      if (mode == 'users') {
+        Get.find<ProfileController>().searchProfiles(t);
+      } else {
+        _runGlobalSearch(t);
+      }
+    }
   }
 
   @override
@@ -69,13 +131,31 @@ class _SearchTabState extends State<SearchTab> {
       body: Column(
         children: [
           HeaderApp(
-            title: 'Tìm kiếm người dùng',
-            searchHint: 'Tên hiển thị...',
+            title: 'Tìm kiếm',
+            searchHint:
+                _searchMode == 'users' ? 'Tên hiển thị...' : 'Bài đăng, thợ...',
             onMorePressed: () {},
             onSearch: _onSearchInput,
           ),
-
-          // ===== BODY =====
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(
+                  value: 'users',
+                  label: Text('Người dùng'),
+                  icon: Icon(Icons.person_search, size: 18),
+                ),
+                ButtonSegment(
+                  value: 'global',
+                  label: Text('Bài & thợ'),
+                  icon: Icon(Icons.travel_explore, size: 18),
+                ),
+              ],
+              selected: {_searchMode},
+              onSelectionChanged: (s) => _setMode(s.first),
+            ),
+          ),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.all(16),
@@ -86,8 +166,10 @@ class _SearchTabState extends State<SearchTab> {
                   _buildRecent(),
                   const SizedBox(height: 20),
                   _buildCategories(),
+                ] else if (_searchMode == 'users') ...[
+                  _buildUserSearchResults(),
                 ] else ...[
-                  _buildSearchResults(),
+                  _buildGlobalSearchResults(),
                 ],
               ],
             ),
@@ -190,7 +272,7 @@ class _SearchTabState extends State<SearchTab> {
     );
   }
 
-  Widget _buildSearchResults() {
+  Widget _buildUserSearchResults() {
     final pc = Get.find<ProfileController>();
     return Obx(() {
       if (pc.searchLoading.value) {
@@ -224,10 +306,10 @@ class _SearchTabState extends State<SearchTab> {
               child: ListTile(
                 leading: CircleAvatar(
                   backgroundColor: Colors.teal,
-                  backgroundImage: p.avatarUrl != null && p.avatarUrl!.isNotEmpty
+                  backgroundImage: isHttpImageUrl(p.avatarUrl)
                       ? NetworkImage(p.avatarUrl!)
                       : null,
-                  child: p.avatarUrl == null || p.avatarUrl!.isEmpty
+                  child: !isHttpImageUrl(p.avatarUrl)
                       ? const Icon(Icons.person, color: Colors.white)
                       : null,
                 ),
@@ -246,5 +328,74 @@ class _SearchTabState extends State<SearchTab> {
         ],
       );
     });
+  }
+
+  List<Map<String, dynamic>> _mapList(dynamic v) {
+    if (v is! List) return [];
+    return v.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+  }
+
+  Widget _buildGlobalSearchResults() {
+    if (_globalLoading) {
+      return const Padding(
+        padding: EdgeInsets.all(32),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_globalError.isNotEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Text(_globalError),
+      );
+    }
+    final g = _globalData;
+    if (g == null) {
+      return const Padding(
+        padding: EdgeInsets.all(16),
+        child: Text('Không có dữ liệu'),
+      );
+    }
+    final posts = _mapList(g['posts']);
+    final providers = _mapList(g['providers']);
+    if (posts.isEmpty && providers.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(16),
+        child: Text('Không tìm thấy bài đăng hay thợ'),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '“$searchQuery” — bài: ${g['totalPosts'] ?? posts.length}, thợ: ${g['totalProviders'] ?? providers.length}',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        if (posts.isNotEmpty) ...[
+          const Text('Bài đăng', style: TextStyle(fontWeight: FontWeight.w600)),
+          ...posts.map(
+            (p) => Card(
+              child: ListTile(
+                title: Text(p['title']?.toString() ?? ''),
+                subtitle: Text(p['location']?.toString() ?? ''),
+              ),
+            ),
+          ),
+        ],
+        if (providers.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          const Text('Thợ', style: TextStyle(fontWeight: FontWeight.w600)),
+          ...providers.map(
+            (p) => Card(
+              child: ListTile(
+                leading: const CircleAvatar(child: Icon(Icons.person)),
+                title: Text(p['displayName']?.toString() ?? 'Thợ'),
+                subtitle: Text(p['province']?.toString() ?? ''),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
   }
 }

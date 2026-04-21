@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:mobile_app_doan/home/controllers/notification_controller.dart';
-import 'package:mobile_app_doan/home/socket/server_socket.dart';
 import 'package:mobile_app_doan/home/utils/parse_api_list.dart';
 
 class NotificationTab extends StatefulWidget {
@@ -17,13 +16,11 @@ class NotificationTab extends StatefulWidget {
 class _NotificationTabState extends State<NotificationTab>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final SocketService socketService = SocketService();
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    socketService.initSocket();
     scheduleMicrotask(() {
       if (Get.isRegistered<NotificationController>()) {
         Get.find<NotificationController>().refreshAll();
@@ -34,7 +31,6 @@ class _NotificationTabState extends State<NotificationTab>
   @override
   void dispose() {
     _tabController.dispose();
-    socketService.disconnect();
     super.dispose();
   }
 

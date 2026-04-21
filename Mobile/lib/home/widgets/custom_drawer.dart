@@ -83,6 +83,11 @@ class CustomDrawer extends StatelessWidget {
               }),
               _drawerItem(Icons.bookmark_border, 'Đã lưu', () {
                 Navigator.pop(context);
+                Get.toNamed('/saved-posts');
+              }),
+              _drawerItem(Icons.receipt_long, 'Đơn hàng', () {
+                Navigator.pop(context);
+                Get.toNamed('/orders');
               }),
               _drawerItem(Icons.history, 'Lịch sử yêu cầu', () {
                 Navigator.pop(context);

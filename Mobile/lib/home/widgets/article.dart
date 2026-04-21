@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
+import 'package:mobile_app_doan/utils/network_image_url.dart';
 import 'package:openapi/openapi.dart';
 
 enum ArticleMenuType { home, profile }
@@ -77,6 +78,7 @@ class Article extends StatelessWidget {
     final customer = postResponseDto.customer;
     final fullName = customer.fullName ?? "Người dùng";
     final avatarUrl = customer.avatarUrl ?? "";
+    final useNetworkAvatar = isHttpImageUrl(avatarUrl);
 
     // --- SAFE POST FIELDS ---
     final status = postResponseDto.status;
@@ -105,10 +107,10 @@ class Article extends StatelessWidget {
                 CircleAvatar(
                   radius: 20,
                   backgroundColor: Colors.grey[200],
-                  backgroundImage: avatarUrl.isNotEmpty
+                  backgroundImage: useNetworkAvatar
                       ? NetworkImage(avatarUrl)
                       : null,
-                  child: avatarUrl.isEmpty
+                  child: !useNetworkAvatar
                       ? const Icon(Icons.person, color: Colors.grey)
                       : null,
                 ),

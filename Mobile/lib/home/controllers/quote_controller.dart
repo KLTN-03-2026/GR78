@@ -113,14 +113,66 @@ class QuoteController extends GetxController {
     }
   }
 
-  Future<void> cancelQuoteById(String id) async {
+  Future<void> cancelQuoteById(String id, {String? reason}) async {
     try {
       isLoading.value = true;
-      await repository.cancelQuote(id);
+      await repository.cancelQuote(id, reason: reason);
       await loadMyQuotes();
       Get.snackbar('Thành công', 'Đã hủy báo giá');
     } catch (e) {
       Get.snackbar('Lỗi', e.toString());
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// Thợ: chào giá lại sau khi đã mở chat (POST /quotes/:id/revise).
+  Future<void> reviseQuote(
+    String id, {
+    required num price,
+    String? description,
+    String? terms,
+    num? estimatedDuration,
+    String? changeReason,
+  }) async {
+    try {
+      isLoading.value = true;
+      await repository.reviseQuote(
+        id,
+        price: price,
+        description: description,
+        terms: terms,
+        estimatedDuration: estimatedDuration,
+        changeReason: changeReason,
+      );
+      Get.snackbar('Thành công', 'Đã gửi báo giá mới');
+    } catch (e) {
+      Get.snackbar('Lỗi', e.toString());
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// Khách: yêu cầu đặt đơn (POST /quotes/:id/request-order).
+  Future<void> requestOrder(String id) async {
+    try {
+      isLoading.value = true;
+      await repository.requestOrder(id);
+      Get.snackbar('Thành công', 'Đã gửi yêu cầu đặt đơn');
+    } catch (e) {
+      Get.snackbar('Lỗi', e.toString());
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<dynamic> fetchQuoteWithRevisions(String id) async {
+    try {
+      isLoading.value = true;
+      return await repository.getQuoteWithRevisions(id);
+    } catch (e) {
+      Get.snackbar('Lỗi', e.toString());
+      rethrow;
     } finally {
       isLoading.value = false;
     }
