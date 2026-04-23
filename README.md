@@ -254,3 +254,7 @@ README riêng từng phần:
 ## Lưu ý khi đưa lên môi trường thật
 
 Dự án phục vụ học tập và demo. Cần rà soát lại CORS, URL mặc định, khóa bí mật và cấu hình bảo mật mạng trên Android (`network_security_config`, v.v.) trước khi public production.
+=======
+# THO_TOT
+Đồ Án Tốt Nghiệp
+>>>>>>> 4d492f7 (Initial commit)

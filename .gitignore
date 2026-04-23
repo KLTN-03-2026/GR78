@@ -9,17 +9,48 @@
 *.swp
 *.swo
 
-# Dependencies
-node_modules/
-.flutter-plugins
-.flutter-plugins-dependencies
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
 
-# Build outputs
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
 dist/
-build/
-.dart_tool/
-.packages
 
-# Environment
+# misc
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local env files
+.env*.local
 .env
 .env.local
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# swagger temp file
+swagger.json
+
+# Flutter
+.flutter-plugins
+.flutter-plugins-dependencies
+.dart_tool/
+.packages
