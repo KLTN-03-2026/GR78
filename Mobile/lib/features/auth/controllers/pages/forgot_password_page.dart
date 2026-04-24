@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:mobile_app_doan/core/theme/app_spacing.dart';
+import 'package:mobile_app_doan/core/widgets/app_auth_shell.dart';
+import 'package:mobile_app_doan/core/widgets/app_primary_button.dart';
 import 'package:mobile_app_doan/features/auth/controllers/auth_controller.dart';
-import 'package:mobile_app_doan/features/auth/widgets/button.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -42,43 +44,51 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Quên mật khẩu')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                'Nhập email đã đăng ký. Server sẽ gửi link đặt lại mật khẩu (nếu email tồn tại).',
+    final canPop = ModalRoute.of(context)?.canPop ?? false;
+
+    return AppAuthShell(
+      title: 'Quên mật khẩu',
+      subtitle: 'Nhập email để nhận hướng dẫn đặt lại mật khẩu',
+      leading: canPop
+          ? IconButton(
+              onPressed: () => Get.back<void>(),
+              icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
+            )
+          : const SizedBox(height: 40),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Nhập email đã đăng ký. Server sẽ gửi link đặt lại mật khẩu (nếu email tồn tại).',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextFormField(
+              controller: _email,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                labelText: 'Email',
+                prefixIcon: Icon(Icons.email_outlined),
               ),
-              const SizedBox(height: 24),
-              TextFormField(
-                controller: _email,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Vui lòng nhập email';
-                  if (!v.contains('@')) return 'Email không hợp lệ';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
-              PrimaryButton(
-                text: _busy ? 'Đang gửi...' : 'Gửi yêu cầu',
-                onPressed: _busy ? () {} : _submit,
-              ),
-              TextButton(
-                onPressed: _busy ? null : () => Get.offNamed('/login'),
-                child: const Text('Quay lại đăng nhập'),
-              ),
-            ],
-          ),
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return 'Vui lòng nhập email';
+                if (!v.contains('@')) return 'Email không hợp lệ';
+                return null;
+              },
+            ),
+            const SizedBox(height: AppSpacing.md),
+            AppPrimaryButton(
+              label: _busy ? 'Đang gửi...' : 'Gửi yêu cầu',
+              isLoading: _busy,
+              onPressed: _busy ? null : _submit,
+            ),
+            TextButton(
+              onPressed: _busy ? null : () => Get.offNamed('/login'),
+              child: const Text('Quay lại đăng nhập'),
+            ),
+          ],
         ),
       ),
     );

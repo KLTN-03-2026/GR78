@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:mobile_app_doan/core/theme/app_colors.dart';
+import 'package:mobile_app_doan/core/theme/app_spacing.dart';
+import 'package:mobile_app_doan/core/widgets/app_auth_shell.dart';
 import 'package:mobile_app_doan/features/auth/controllers/auth_controller.dart';
 import 'package:mobile_app_doan/features/auth/utils/validator.dart';
 import 'package:mobile_app_doan/features/auth/widgets/button.dart';
@@ -18,7 +21,6 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  bool showPassword = false;
   String loginMethod = 'phone';
 
   final AuthController authController = Get.find<AuthController>();
@@ -56,278 +58,138 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        color: Colors.white,
-        child: Column(
-          children: [
-            // Header
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.only(
-                top: 60,
-                bottom: 30,
-                left: 20,
-                right: 20,
-              ),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF14B8A6), Color(0xFF0D9488)],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (widget.onBack != null ||
-                      (ModalRoute.of(context)?.canPop ?? false)) ...[
-                    IconButton(
-                      onPressed: widget.onBack ??
-                          () {
-                            Get.back<void>();
-                          },
-                      icon: const Icon(
-                        Icons.arrow_back,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
-                  ] else
-                    const SizedBox(height: 48),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Đăng nhập',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Chào mừng bạn quay trở lại!',
-                    style: TextStyle(color: Colors.white70, fontSize: 16),
-                  ),
-                ],
-              ),
+    final theme = Theme.of(context);
+    final canPop = widget.onBack != null || (ModalRoute.of(context)?.canPop ?? false);
+
+    return AppAuthShell(
+      title: 'Đăng nhập',
+      subtitle: 'Chào mừng bạn quay trở lại!',
+      leading: canPop
+          ? IconButton(
+              onPressed: widget.onBack ?? () => Get.back<void>(),
+              icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
+            )
+          : const SizedBox(height: 40),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildLoginMethodToggle(theme),
+          const SizedBox(height: AppSpacing.sm),
+          if (loginMethod == 'phone')
+            InputField(
+              label: 'Số điện thoại',
+              hint: '0912 345 678',
+              icon: Icons.phone,
+              controller: phoneController,
+              errorText: phoneError,
+              keyboardType: TextInputType.phone,
+              onChanged: (value) {
+                setState(() {
+                  phoneError = Validators.validatePhone(value.trim());
+                });
+              },
+            )
+          else
+            InputField(
+              label: 'Email',
+              hint: 'example@email.com',
+              icon: Icons.email,
+              controller: emailController,
+              keyboardType: TextInputType.emailAddress,
+              errorText: emailError,
+              onChanged: (value) => setState(() {
+                emailError = Validators.validateEmail(value.trim());
+              }),
             ),
-
-            // Nội dung chính
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 24,
-                ),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-                ),
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      _buildLoginMethodToggle(),
-                      const SizedBox(height: 20),
-
-                      // Form input
-                      if (loginMethod == 'phone')
-                        InputField(
-                          label: 'Số điện thoại',
-                          hint: '0912 345 678',
-                          icon: Icons.phone,
-                          controller: phoneController,
-                          errorText: phoneError,
-                          keyboardType: TextInputType.phone,
-                          onChanged: (value) {
-                            setState(() {
-                              phoneError = Validators.validatePhone(
-                                value.trim(),
-                              );
-                            });
-                          },
-                        )
-                      else
-                        InputField(
-                          label: 'Email',
-                          hint: 'example@email.com',
-                          icon: Icons.email,
-                          controller: emailController,
-                          keyboardType: TextInputType.emailAddress,
-
-                          errorText: emailError,
-                          onChanged: (value) => setState(() {
-                            emailError = Validators.validateEmail(value.trim());
-                          }),
-                        ),
-                      const SizedBox(height: 16),
-                      PasswordField(
-                        label: 'Mật khẩu',
-                        controller: passwordController,
-                        errorText: passwordError,
-                        onChanged: (value) => setState(() {
-                          passwordError = Validators.validatePassword(
-                            value.trim(),
-                            value.trim(),
-                          );
-                        }),
-                      ),
-
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () => Get.toNamed('/forgot-password'),
-                          child: const Text(
-                            'Quên mật khẩu?',
-                            style: TextStyle(
-                              color: Colors.teal,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      // Nút đăng nhập
-                      Obx(() {
-                        return authController.isLoading.value
-                            ? const CircularProgressIndicator()
-                            : PrimaryButton(
-                                text: 'Đăng nhập',
-                                onPressed: handlerLogin,
-                              );
-                      }),
-
-                      const SizedBox(height: 10),
-
-                      const SizedBox(height: 20),
-
-                      // Divider
-                      Row(
-                        children: const [
-                          Expanded(child: Divider(color: Colors.grey)),
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 8),
-                            child: Text(
-                              'Hoặc đăng nhập với',
-                              style: TextStyle(color: Colors.grey),
-                            ),
-                          ),
-                          Expanded(child: Divider(color: Colors.grey)),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-
-                      Row(
-                        children: [
-                          SocialButton(
-                            label: "Facebook",
-                            imagePath: 'assets/icons/facebook.png',
-                            onPressed: () {},
-                          ),
-                          const SizedBox(width: 12),
-                          SocialButton(
-                            label: "Google",
-                            imagePath: 'assets/icons/google.png',
-                            onPressed: () {},
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                            'Chưa có tài khoản?',
-                            style: TextStyle(color: Colors.grey),
-                          ),
-                          TextButton(
-                            onPressed: widget.onRegister ??
-                                () => Get.toNamed<void>('/register'),
-                            child: const Text(
-                              'Đăng ký ngay',
-                              style: TextStyle(color: Colors.teal),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+          PasswordField(
+            label: 'Mật khẩu',
+            controller: passwordController,
+            errorText: passwordError,
+            onChanged: (value) => setState(() {
+              passwordError = Validators.validatePassword(
+                value.trim(),
+                value.trim(),
+              );
+            }),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => Get.toNamed<void>('/forgot-password'),
+              child: const Text('Quên mật khẩu?'),
+            ),
+          ),
+          Obx(() {
+            if (authController.isLoading.value) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            return PrimaryButton(text: 'Đăng nhập', onPressed: handlerLogin);
+          }),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(child: Divider(color: theme.dividerColor)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+                child: Text(
+                  'Hoặc đăng nhập với',
+                  style: theme.textTheme.bodySmall,
                 ),
               ),
-            ),
-          ],
-        ),
+              Expanded(child: Divider(color: theme.dividerColor)),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              SocialButton(
+                label: 'Facebook',
+                imagePath: 'assets/icons/facebook.png',
+                onPressed: () {},
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              SocialButton(
+                label: 'Google',
+                imagePath: 'assets/icons/google.png',
+                onPressed: () {},
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('Chưa có tài khoản?', style: theme.textTheme.bodyMedium),
+              TextButton(
+                onPressed: widget.onRegister ?? () => Get.toNamed<void>('/register'),
+                child: const Text('Đăng ký ngay'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  // === các widget con ===
-  Widget _buildLoginMethodToggle() {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => loginMethod = 'phone'),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(
-                  color: loginMethod == 'phone'
-                      ? Colors.white
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: loginMethod == 'phone'
-                      ? [BoxShadow(color: Colors.black12, blurRadius: 3)]
-                      : [],
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  'Số điện thoại',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w500,
-                    color: loginMethod == 'phone'
-                        ? Colors.teal
-                        : Colors.grey[600],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => loginMethod = 'email'),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(
-                  color: loginMethod == 'email'
-                      ? Colors.white
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: loginMethod == 'email'
-                      ? [BoxShadow(color: Colors.black12, blurRadius: 3)]
-                      : [],
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  'Email',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w500,
-                    color: loginMethod == 'email'
-                        ? Colors.teal
-                        : Colors.grey[600],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+  Widget _buildLoginMethodToggle(ThemeData theme) {
+    return SegmentedButton<String>(
+      segments: const [
+        ButtonSegment(value: 'phone', label: Text('Số điện thoại')),
+        ButtonSegment(value: 'email', label: Text('Email')),
+      ],
+      selected: {loginMethod},
+      onSelectionChanged: (s) => setState(() => loginMethod = s.first),
+      style: ButtonStyle(
+        visualDensity: VisualDensity.compact,
+        foregroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppColors.seed;
+          }
+          return theme.colorScheme.onSurfaceVariant;
+        }),
       ),
     );
   }
