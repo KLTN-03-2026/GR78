@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Header from '@/app/components/Header'
 import { AuthService } from '@/lib/api/auth.service'
 import { notificationService, type Notification } from '@/lib/api/notification.service'
-import { socketService } from '@/lib/api/socket.service'
+import { notificationSocketService } from '@/lib/api/notification-socket.service'
 import { quoteService, type Quote } from '@/lib/api/quote.service'
 import { ProfileService } from '@/lib/api/profile.service'
 
@@ -23,6 +23,46 @@ export default function ThongBaoPage() {
   const [quoteLoading, setQuoteLoading] = useState(false)
   const [quotes, setQuotes] = useState<Quote[]>([])
 
+  const emitNotificationUnreadCountChanged = (count: number) => {
+    const next = Math.max(0, Number(count) || 0)
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('notification_unread_count', String(next))
+      window.dispatchEvent(new CustomEvent('notification:unread-count-changed', {
+        detail: {}
+      }))
+    }
+  }
+
+  const isMessageNotification = (notification: Partial<Notification>) => {
+    const type = String(notification.type || '').toLowerCase()
+    const title = String((notification as any).title || '').toLowerCase()
+    const message = String((notification as any).message || '').toLowerCase()
+    const actionUrl = String((notification as any).actionUrl || '').toLowerCase()
+
+    return (
+      type.includes('message') ||
+      type.includes('chat') ||
+      title.includes('tin nhắn') ||
+      title.includes('message') ||
+      message.includes('tin nhắn') ||
+      message.includes('message') ||
+      actionUrl.includes('/tin-nhan')
+    )
+  }
+
+  const isQuoteNotification = (notification: Partial<Notification>) => {
+    const type = String(notification.type || '').toLowerCase()
+    const title = String((notification as any).title || '').toLowerCase()
+    const message = String((notification as any).message || '').toLowerCase()
+
+    return (
+      type.includes('quote') ||
+      type.includes('bao_gia') ||
+      title.includes('báo giá') ||
+      message.includes('báo giá')
+    )
+  }
+
   useEffect(() => {
     const token = AuthService.getToken()
     if (!token) {
@@ -34,17 +74,34 @@ export default function ThongBaoPage() {
     fetchUnreadCount()
 
     // Kết nối socket để nhận notifications real-time
-    socketService.connect()
+    notificationSocketService.connect()
 
     // Lắng nghe notification mới
-    const unsubscribeNew = socketService.on('notification:new', (notification: Notification) => {
+    const unsubscribeNew = notificationSocketService.on('notification:new', (notification: Notification) => {
       console.log('🔔 Received new notification via socket:', notification)
 
-      // Thêm notification mới vào đầu danh sách
-      setNotifications(prev => [notification, ...prev])
+      // Tin nhắn được hiển thị ở khu vực tin nhắn, không hiển thị trong danh sách thông báo
+      if (isMessageNotification(notification)) {
+        return
+      }
 
-      // Tăng unread count
-      setUnreadCount(prev => prev + 1)
+      // Thêm notification mới vào đầu danh sách, tránh duplicate theo id
+      setNotifications(prev => {
+        const exists = prev.some(item => item.id === notification.id)
+        if (exists) {
+          return prev.map(item => (item.id === notification.id ? notification : item))
+        }
+        return [notification, ...prev]
+      })
+
+      // Tăng unread count nếu notification chưa đọc
+      if (!notification.isRead) {
+        setUnreadCount(prev => {
+          const next = prev + 1
+          emitNotificationUnreadCountChanged(next)
+          return next
+        })
+      }
 
       // Hiển thị browser notification (nếu được phép)
       if ('Notification' in window && Notification.permission === 'granted') {
@@ -56,22 +113,36 @@ export default function ThongBaoPage() {
     })
 
     // Lắng nghe khi notification được đánh dấu đã đọc
-    const unsubscribeRead = socketService.on('notification:read', (data: { notificationId: string }) => {
+    const unsubscribeRead = notificationSocketService.on('notification:read', (data: { notificationId: string }) => {
       console.log('✓ Notification marked as read via socket:', data.notificationId)
 
+      let shouldDecreaseUnread = false
       setNotifications(prev =>
-        prev.map(notif =>
-          notif.id === data.notificationId ? { ...notif, isRead: true } : notif
-        )
+        prev.map(notif => {
+          if (notif.id === data.notificationId && !notif.isRead) {
+            shouldDecreaseUnread = true
+            return { ...notif, isRead: true }
+          }
+          return notif
+        })
       )
+
+      if (shouldDecreaseUnread) {
+        setUnreadCount(prev => {
+          const next = Math.max(0, prev - 1)
+          emitNotificationUnreadCountChanged(next)
+          return next
+        })
+      }
     })
 
     // Lắng nghe khi tất cả notification được đánh dấu đã đọc
-    const unsubscribeAllRead = socketService.on('notification:all_read', () => {
+    const unsubscribeAllRead = notificationSocketService.on('notification:all_read', () => {
       console.log('✓ All notifications marked as read via socket')
 
       setNotifications(prev => prev.map(notif => ({ ...notif, isRead: true })))
       setUnreadCount(0)
+      emitNotificationUnreadCountChanged(0)
     })
 
     // Yêu cầu quyền browser notification
@@ -98,10 +169,13 @@ export default function ThongBaoPage() {
 
       // Backend chuẩn: { notifications, total, unreadCount }
       const notificationsArray = Array.isArray(response.notifications)
-        ? response.notifications
+        ? response.notifications.filter(notif => !isMessageNotification(notif))
         : []
 
       setNotifications(notificationsArray)
+      const unread = notificationsArray.filter(notif => !notif.isRead).length
+      setUnreadCount(unread)
+      emitNotificationUnreadCountChanged(unread)
     } catch (err: any) {
       console.error('❌ Error fetching notifications:', err)
       setError('Không thể tải thông báo')
@@ -112,8 +186,12 @@ export default function ThongBaoPage() {
 
   const fetchUnreadCount = async () => {
     try {
-      const count = await notificationService.getUnreadCount()
-      setUnreadCount(count)
+      const response = await notificationService.getNotifications({ limit: 100, unreadOnly: true })
+      const unreadNonMessage = Array.isArray(response.notifications)
+        ? response.notifications.filter(notif => !notif.isRead && !isMessageNotification(notif)).length
+        : 0
+      setUnreadCount(unreadNonMessage)
+      emitNotificationUnreadCountChanged(unreadNonMessage)
     } catch (err) {
       console.error('Error fetching unread count:', err)
     }
@@ -122,11 +200,28 @@ export default function ThongBaoPage() {
   const handleMarkAsRead = async (notificationId: string) => {
     try {
       await notificationService.markAsRead(notificationId)
+      let wasUnread = false
       setNotifications(prev =>
-        prev.map(notif =>
-          notif.id === notificationId ? { ...notif, isRead: true } : notif
-        )
+        prev.map(notif => {
+          if (notif.id === notificationId) {
+            if (!notif.isRead) {
+              wasUnread = true
+            }
+            return { ...notif, isRead: true }
+          }
+          return notif
+        })
       )
+
+      if (wasUnread) {
+        setUnreadCount(prev => {
+          const next = Math.max(0, prev - 1)
+          emitNotificationUnreadCountChanged(next)
+          return next
+        })
+      }
+
+      // Sync hard with server to handle out-of-order socket events
       fetchUnreadCount()
     } catch (err) {
       console.error('Error marking as read:', err)
@@ -138,6 +233,7 @@ export default function ThongBaoPage() {
       await notificationService.markAllAsRead()
       setNotifications(prev => prev.map(notif => ({ ...notif, isRead: true })))
       setUnreadCount(0)
+      emitNotificationUnreadCountChanged(0)
     } catch (err) {
       console.error('Error marking all as read:', err)
     }
@@ -210,6 +306,25 @@ export default function ThongBaoPage() {
     router.push(`/posts/${postId}`)
   }
 
+  const handleNotificationClick = async (notification: Notification) => {
+    const shouldNavigateToQuote = isQuoteNotification(notification)
+    const actionUrl = String((notification as any).actionUrl || '').trim()
+    const needsMarkAsRead = !notification.isRead
+
+    if (needsMarkAsRead && !shouldNavigateToQuote) {
+      await handleMarkAsRead(notification.id)
+    }
+
+    if (shouldNavigateToQuote) {
+      await handleViewQuoteNotification(notification)
+      return
+    }
+
+    if (actionUrl) {
+      router.push(actionUrl)
+    }
+  }
+
   // Chấp nhận báo giá và chuyển đến chat
   const handleAcceptQuote = async (quoteId: string) => {
     try {
@@ -278,7 +393,10 @@ export default function ThongBaoPage() {
 
 
 
-  const filteredNotifications = (notifications || []).filter(notif => {
+  const visibleNotifications = (notifications || []).filter(notif => !isMessageNotification(notif))
+  const visibleUnreadCount = visibleNotifications.filter(notif => !notif.isRead).length
+
+  const filteredNotifications = visibleNotifications.filter(notif => {
     if (filter === 'unread') return !notif.isRead
     return true
   })
@@ -347,11 +465,11 @@ export default function ThongBaoPage() {
                 </svg>
               </button>
               <h1 className="text-2xl font-bold">
-                Thông báo {unreadCount > 0 && `(${unreadCount})`}
+                Thông báo {visibleUnreadCount > 0 && `(${visibleUnreadCount})`}
               </h1>
             </div>
             <div className="flex space-x-2">
-              {unreadCount > 0 && (
+              {visibleUnreadCount > 0 && (
                 <button
                   onClick={handleMarkAllAsRead}
                   className="text-sm text-orange-600 hover:text-orange-700 px-3 py-1 rounded-lg hover:bg-orange-50"
@@ -377,7 +495,7 @@ export default function ThongBaoPage() {
                 : 'text-gray-600'
                 }`}
             >
-              Tất cả ({notifications?.length || 0})
+              Tất cả ({visibleNotifications.length})
             </button>
             <button
               onClick={() => setFilter('unread')}
@@ -386,7 +504,7 @@ export default function ThongBaoPage() {
                 : 'text-gray-600'
                 }`}
             >
-              Chưa đọc ({unreadCount})
+              Chưa đọc ({visibleUnreadCount})
             </button>
           </div>
 
@@ -412,11 +530,11 @@ export default function ThongBaoPage() {
             ) : (
               <div className="space-y-2">
                 {filteredNotifications.map((notification) => {
-                  const isQuoteNotification = notification.type === 'new_quote_received'
+                  const quoteNotification = isQuoteNotification(notification)
 
                   // Debug: Log notification data
                   console.log('🔍 Notification type:', notification.type)
-                  console.log('🔍 Is quote notification:', isQuoteNotification)
+                  console.log('🔍 Is quote notification:', quoteNotification)
                   console.log('🔍 Notification data:', (notification as any).data)
 
                   return (
@@ -424,14 +542,10 @@ export default function ThongBaoPage() {
                       key={notification.id}
                       onClick={() => {
                         console.log('👆 Clicked notification:', notification)
-                        if (isQuoteNotification) {
-                          handleViewQuoteNotification(notification)
-                        } else {
-                          console.log('⚠️ Not a quote notification, type:', notification.type)
-                        }
+                        void handleNotificationClick(notification)
                       }}
                       className={`bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow ${!notification.isRead ? 'border-l-4 border-orange-500' : ''
-                        } ${isQuoteNotification ? 'cursor-pointer' : ''}`}
+                        } cursor-pointer`}
                     >
                       <div className="p-4">
                         <div className="flex items-start space-x-3">
@@ -455,7 +569,7 @@ export default function ThongBaoPage() {
                                 </p>
 
                                 {/* Hiển thị hint cho notification báo giá */}
-                                {notification.type === 'new_quote_received' && (
+                                {quoteNotification && (
                                   <p className="mt-2 text-xs text-blue-600 font-medium">
                                   </p>
                                 )}

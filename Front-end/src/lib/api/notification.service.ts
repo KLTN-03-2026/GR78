@@ -6,6 +6,11 @@ import { API_CONFIG } from './config'
 // Use local proxy route instead of calling backend directly to avoid CORS issues
 const API_BASE = '/api'
 
+function emitNotificationUnreadRefresh() {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent('notification:refresh-unread-count'))
+}
+
 // Helper function để xử lý fetch với authentication
 async function authenticatedFetch(url: string, options: RequestInit = {}): Promise<Response> {
   const token = AuthService.getToken()
@@ -126,7 +131,9 @@ class NotificationService {
       throw new Error(error.error || 'Failed to mark as read')
     }
 
-    return response.json()
+    const result = await response.json()
+    emitNotificationUnreadRefresh()
+    return result
   }
 
   /**
@@ -143,7 +150,9 @@ class NotificationService {
       throw new Error(error.error || 'Failed to mark all as read')
     }
 
-    return response.json()
+    const result = await response.json()
+    emitNotificationUnreadRefresh()
+    return result
   }
 
   /**
@@ -160,6 +169,7 @@ class NotificationService {
       throw new Error(error.error || 'Failed to delete notification')
     }
 
+    emitNotificationUnreadRefresh()
     return { success: true }
   }
 
@@ -177,6 +187,7 @@ class NotificationService {
       throw new Error(error.error || 'Failed to delete all read')
     }
 
+    emitNotificationUnreadRefresh()
     return { success: true }
   }
 

@@ -12,6 +12,7 @@ import { chatService } from '@/lib/api/chat.service'
 import { notificationService } from '@/lib/api/notification.service'
 import { socketService } from '@/lib/api/socket.service'
 import { chatSocketService } from '@/lib/api/chat-socket.service'
+import { savedPostService } from '@/lib/api/saved-post.service'
 import SkeletonPost from '@/app/components/SkeletonPost'
 
 export default function HomePage() {
@@ -34,6 +35,8 @@ export default function HomePage() {
   const [avatarLoadError, setAvatarLoadError] = useState(false)
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0)
   const [unreadMessageCount, setUnreadMessageCount] = useState(0)
+  const [savedPostIds, setSavedPostIds] = useState<Set<string>>(new Set())
+  const [savingPostIds, setSavingPostIds] = useState<Set<string>>(new Set())
 
   const resetCreatePostForm = () => {
     setPostContent('')
@@ -169,103 +172,118 @@ export default function HomePage() {
 
   // Kiểm tra authentication khi component mount
   useEffect(() => {
+    let isCancelled = false
+    let unsubscribeNew = () => {}
+    let unsubscribeRead = () => {}
+    let unsubscribeAllRead = () => {}
+    let unsubscribeChatNewMessage = () => {}
+    let unsubscribeChatConnected = () => {}
+    let unsubscribeChatUnread = () => {}
+
     const checkAuth = async () => {
       if (!AuthService.isAuthenticated()) {
         // Chưa đăng nhập, chuyển về trang đăng nhập
         router.push('/dang-nhap')
-      } else {
-        // Load thông tin user từ API
-        try {
-          const userData = await ProfileService.getMyProfile()
+        return
+      }
+
+      // Load thông tin user từ API
+      try {
+        const userData = await ProfileService.getMyProfile()
+        if (!isCancelled) {
           setCurrentUser(mapUserWithAvatar(userData))
           setAvatarLoadError(false)
-        } catch (error) {
-          console.error('❌ Không thể load thông tin user:', error)
         }
+      } catch (error) {
+        console.error('❌ Không thể load thông tin user:', error)
 
-        setIsLoading(false)
-        // Load bài đăng và số chưa đọc
-        await loadPosts()
-        await loadUnreadCounts()
+        const message =
+          error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
+        const isAuthError =
+          message.includes('401') ||
+          message.includes('unauthorized') ||
+          message.includes('đăng nhập') ||
+          message.includes('hết hạn')
 
-        // Kết nối socket để nhận cập nhật real-time cho badge numbers
-        socketService.connect()
-        chatSocketService.connect()
-        // ===== NOTIFICATION SOCKET EVENTS =====
-        // Lắng nghe thông báo mới
-        const unsubscribeNew = socketService.on('notification:new', (notification: any) => {
-          console.log('🔔 [Home] Nhận thông báo mới:', notification)
+        if (isAuthError) {
+          AuthService.handleTokenExpired()
+          return
+        }
+      }
 
-          // Tăng số unread count
-          setUnreadNotificationCount(prev => prev + 1)
+      if (isCancelled) return
 
-          // Hiển thị browser notification
-          if (Notification.permission === 'granted') {
-            new Notification('Thông báo mới', {
-              body: notification.message || 'Bạn có thông báo mới',
-              icon: '/logo.png'
-            })
-          }
-        })
+      setIsLoading(false)
+      // Load bài đăng và số chưa đọc
+      await loadPosts()
+      await loadUnreadCounts()
 
-        // Lắng nghe khi đánh dấu đã đọc
-        const unsubscribeRead = socketService.on('notification:read', ({ notificationId }: any) => {
-          console.log('✅ [Home] Thông báo đã đọc:', notificationId)
-          // Giảm unread count
-          setUnreadNotificationCount(prev => Math.max(0, prev - 1))
-        })
+      if (isCancelled) return
 
-        // Lắng nghe khi đánh dấu tất cả đã đọc
-        const unsubscribeAllRead = socketService.on('notification:all_read', () => {
-          console.log('✅ [Home] Tất cả thông báo đã đọc')
-          setUnreadNotificationCount(0)
-        })
+      // Kết nối socket để nhận cập nhật real-time cho badge numbers
+      socketService.connect()
+      chatSocketService.connect()
 
-        // ===== CHAT SOCKET EVENTS =====
-        // Lắng nghe tin nhắn mới để cập nhật badge
-        const unsubscribeChatNewMessage = chatSocketService.on('new_message', (data: any) => {
-          console.log('💬 [Home] Tin nhắn mới:', data)
-          // Tăng message count
-          setUnreadMessageCount(prev => prev + 1)
-        })
+      // ===== NOTIFICATION SOCKET EVENTS =====
+      unsubscribeNew = socketService.on('notification:new', (notification: any) => {
+        console.log('🔔 [Home] Nhận thông báo mới:', notification)
+        void loadUnreadCounts()
 
-        // Lắng nghe khi chat connected để lấy unread count
-        const unsubscribeChatConnected = chatSocketService.on('connected', (data: { userId: string; unreadCount: number }) => {
-          console.log('💬 [Home] Chat connected:', data)
-          setUnreadMessageCount(data.unreadCount)
-        })
-
-        // Lắng nghe unread count update từ chat
-        const unsubscribeChatUnread = chatSocketService.on('unread_updated', (data: { conversationId: string; increment: number }) => {
-          console.log('💬 [Home] Chat unread updated:', data)
-          setUnreadMessageCount(prev => Math.max(0, prev + data.increment))
-        })
-
-        // Yêu cầu quyền hiển thị browser notification
-        if (Notification.permission === 'default') {
-          Notification.requestPermission().then(permission => {
-            console.log('🔔 Browser notification permission:', permission)
+        // Hiển thị browser notification
+        if (Notification.permission === 'granted') {
+          new Notification('Thông báo mới', {
+            body: notification.message || 'Bạn có thông báo mới',
+            icon: '/logo.png'
           })
         }
+      })
 
-        // Cleanup khi component unmount
-        return () => {
-          // Notification socket cleanup
-          unsubscribeNew()
-          unsubscribeRead()
-          unsubscribeAllRead()
-          socketService.disconnect()
+      unsubscribeRead = socketService.on('notification:read', ({ notificationId }: any) => {
+        console.log('✅ [Home] Thông báo đã đọc:', notificationId)
+        void loadUnreadCounts()
+      })
 
-          // Chat socket cleanup
-          unsubscribeChatNewMessage()
-          unsubscribeChatConnected()
-          unsubscribeChatUnread()
-          chatSocketService.disconnect()
-        }
+      unsubscribeAllRead = socketService.on('notification:all_read', () => {
+        console.log('✅ [Home] Tất cả thông báo đã đọc')
+        void loadUnreadCounts()
+      })
+
+      // ===== CHAT SOCKET EVENTS =====
+      unsubscribeChatNewMessage = chatSocketService.on('new_message', (data: any) => {
+        console.log('💬 [Home] Tin nhắn mới:', data)
+        void loadUnreadCounts()
+      })
+
+      unsubscribeChatConnected = chatSocketService.on('connected', (data: { userId: string; unreadCount: number }) => {
+        console.log('💬 [Home] Chat connected:', data)
+        void loadUnreadCounts()
+      })
+
+      unsubscribeChatUnread = chatSocketService.on('unread_updated', (data: { conversationId: string; increment: number }) => {
+        console.log('💬 [Home] Chat unread updated:', data)
+        void loadUnreadCounts()
+      })
+
+      // Yêu cầu quyền hiển thị browser notification
+      if (Notification.permission === 'default') {
+        Notification.requestPermission().then(permission => {
+          console.log('🔔 Browser notification permission:', permission)
+        })
       }
     }
 
     checkAuth()
+
+    return () => {
+      isCancelled = true
+      unsubscribeNew()
+      unsubscribeRead()
+      unsubscribeAllRead()
+      unsubscribeChatNewMessage()
+      unsubscribeChatConnected()
+      unsubscribeChatUnread()
+      socketService.disconnect()
+    }
   }, [router])
 
   // Dữ liệu mẫu cho danh sách lĩnh vực
@@ -341,6 +359,82 @@ export default function HomePage() {
       alert(error.message || 'Không thể tạo cuộc trò chuyện')
     }
   }
+
+  const isWorkerRole = () => {
+    const userRole = String(currentUser?.accountType || currentUser?.role || '').toUpperCase()
+    return userRole === 'WORKER' || userRole === 'PROVIDER'
+  }
+
+  const loadSavedStatuses = async (postList: any[]) => {
+    if (!isWorkerRole() || postList.length === 0) {
+      setSavedPostIds(new Set())
+      return
+    }
+
+    try {
+      const statuses = await Promise.all(
+        postList.map(async (post) => {
+          const postId = post?.id
+          if (!postId) return { postId: '', saved: false }
+          const saved = await savedPostService.getSavedStatus(String(postId)).catch(() => false)
+          return { postId: String(postId), saved }
+        })
+      )
+
+      const nextSavedPostIds = new Set(
+        statuses.filter((item) => item.saved && item.postId).map((item) => item.postId)
+      )
+
+      setSavedPostIds(nextSavedPostIds)
+    } catch (error) {
+      console.error('❌ Lỗi tải trạng thái bài đã lưu:', error)
+      setSavedPostIds(new Set())
+    }
+  }
+
+  const handleToggleSavePost = async (postId: string) => {
+    if (!postId || savingPostIds.has(postId)) return
+
+    const isSaved = savedPostIds.has(postId)
+    setSavingPostIds((prev) => new Set(prev).add(postId))
+
+    try {
+      if (isSaved) {
+        await savedPostService.unsavePost(postId)
+        setSavedPostIds((prev) => {
+          const next = new Set(prev)
+          next.delete(postId)
+          return next
+        })
+      } else {
+        await savedPostService.savePost(postId)
+        setSavedPostIds((prev) => new Set(prev).add(postId))
+      }
+    } catch (error: any) {
+      console.error('❌ Lỗi lưu/bỏ lưu bài đăng:', error)
+      alert(error?.message || 'Không thể lưu bài đăng')
+    } finally {
+      setSavingPostIds((prev) => {
+        const next = new Set(prev)
+        next.delete(postId)
+        return next
+      })
+    }
+  }
+
+  useEffect(() => {
+    if (!currentUser || posts.length === 0) {
+      setSavedPostIds(new Set())
+      return
+    }
+
+    if (!isWorkerRole()) {
+      setSavedPostIds(new Set())
+      return
+    }
+
+    loadSavedStatuses(posts)
+  }, [currentUser, posts])
 
   // Dữ liệu mẫu cho bài đăng (dùng khi không có API)
   const mockPosts = [
@@ -667,7 +761,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="relative flex flex-col h-screen overflow-hidden bg-gradient-to-br from-[#f2fbf9] via-[#f7fffd] to-[#e8f3ff]">
+    <div className="relative flex flex-col h-screen overflow-hidden aurora-bg page-enter bg-gradient-to-br from-[#f2fbf9] via-[#f7fffd] to-[#e8f3ff]">
       <div className="pointer-events-none absolute -left-20 -top-24 h-72 w-72 rounded-full bg-emerald-200/40 blur-3xl animate-pulse" />
       <div className="pointer-events-none absolute -right-20 top-1/3 h-80 w-80 rounded-full bg-cyan-200/40 blur-3xl animate-pulse" style={{ animationDelay: '0.7s' }} />
       <div className="pointer-events-none absolute bottom-0 left-1/4 h-64 w-64 rounded-full bg-sky-200/30 blur-3xl animate-pulse" style={{ animationDelay: '1.1s' }} />
@@ -682,7 +776,7 @@ export default function HomePage() {
             onClick={handleCancelCreatePost}
           >
             <div
-              className="relative bg-white/95 border border-white/70 rounded-2xl w-full max-w-lg shadow-2xl shadow-cyan-900/15"
+              className="relative glass-surface w-full max-w-lg rounded-2xl hover-lift"
               onClick={(e) => e.stopPropagation()}
             >
               <button
@@ -817,7 +911,7 @@ export default function HomePage() {
         )}
 
         {/* Sidebar */}
-        <div className="hidden md:flex w-72 bg-gradient-to-b from-rose-50/85 via-orange-50/70 to-white/85 backdrop-blur-xl border-r border-rose-100/80 flex-col shadow-xl shadow-rose-900/5">
+        <div className="hidden md:flex w-72 bg-gradient-to-b from-rose-50/85 via-orange-50/70 to-white/85 backdrop-blur-xl border-r border-rose-100/80 flex-col shadow-xl shadow-rose-900/5 stagger-item">
           {/* Navigation Menu */}
           <nav className="flex-1 overflow-y-auto p-3">
             <div className="space-y-1">
@@ -1099,6 +1193,11 @@ export default function HomePage() {
                     (post.customer?.fullName === currentUser?.fullName && currentUser?.fullName)
 
                   const postAuthor = isMyPost ? currentUser : post.customer
+                  const userRole = currentUser?.accountType || currentUser?.role
+                  const isWorker = userRole === 'WORKER' || userRole === 'provider'
+                  const postId = String(post.id)
+                  const isSaved = savedPostIds.has(postId)
+                  const isSaving = savingPostIds.has(postId)
 
                   return (
                     <div key={post.id} className="bg-white/90 backdrop-blur rounded-2xl border border-white/80 shadow-xl shadow-slate-900/5 mb-5 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-cyan-900/10 animate-fade-in" style={{ animationDelay: `${Math.min(0.8, index * 0.05)}s` }}>
@@ -1389,9 +1488,6 @@ export default function HomePage() {
                         </button>
 
                         {!isMyPost && (() => {
-                          const userRole = currentUser?.accountType || currentUser?.role
-                          const isWorker = userRole === 'WORKER' || userRole === 'provider'
-
                           // Chỉ thợ mới có thể gửi chào giá
                           if (!isWorker) return null
 
@@ -1411,12 +1507,26 @@ export default function HomePage() {
                           )
                         })()}
 
-                        <button className="flex items-center space-x-2 px-4 py-2 hover:bg-slate-100 rounded-xl transition">
-                          <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                          </svg>
-                          <span className="text-slate-700 font-medium">Lưu</span>
-                        </button>
+                        {isWorker && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleToggleSavePost(postId)
+                            }}
+                            disabled={isSaving}
+                            className={`flex items-center space-x-2 px-4 py-2 rounded-xl transition ${isSaved
+                              ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                              : 'hover:bg-slate-100'} ${isSaving ? 'opacity-60 cursor-not-allowed' : ''}`}
+                          >
+                            <svg className={`w-5 h-5 ${isSaved ? 'text-emerald-600' : 'text-slate-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                            </svg>
+                            <span className={`font-medium ${isSaved ? 'text-emerald-700' : 'text-slate-700'}`}>
+                              {isSaving ? 'Đang lưu...' : isSaved ? 'Đã lưu' : 'Lưu'}
+                            </span>
+                          </button>
+                        )}
                       </div>
 
                     </div>

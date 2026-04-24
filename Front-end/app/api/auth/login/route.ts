@@ -41,7 +41,22 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify(attempt),
         })
 
-        const data = await response.json()
+        // Đọc body một lần duy nhất dưới dạng text
+        const responseText = await response.text()
+        let data
+
+        // Cố gắng parse như JSON
+        try {
+          data = JSON.parse(responseText)
+        } catch (parseError) {
+          // Nếu không phải JSON, tạo error response
+          console.error('❌ Backend trả về không phải JSON. Status:', response.status)
+          console.error('📄 Nội dung phản hồi:', responseText.substring(0, 300))
+          data = { 
+            message: 'Server error - invalid response format',
+            detail: responseText.substring(0, 100)
+          }
+        }
 
         // Nếu thành công (status 200-299), return ngay
         if (response.ok) {

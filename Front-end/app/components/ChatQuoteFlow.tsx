@@ -50,6 +50,72 @@ export default function ChatQuoteFlow({
     const hasConversationId = Boolean(conversationId)
     const hasCurrentUserId = Boolean(currentUser?.id)
 
+    const normalizeMediaUrl = (rawUrl?: string | null) => {
+        if (!rawUrl) return ''
+        const cleanUrl = rawUrl.trim()
+        if (!cleanUrl) return ''
+
+        if (/^https?:\/\//i.test(cleanUrl) || cleanUrl.startsWith('data:') || cleanUrl.startsWith('blob:')) {
+            return cleanUrl
+        }
+
+        const apiDomain = (process.env.NEXT_PUBLIC_API_DOMAIN || process.env.NEXT_PUBLIC_API_URL || '').replace(/\/api\/v1\/?$/, '')
+        if (!apiDomain) return cleanUrl
+
+        if (cleanUrl.startsWith('/')) {
+            return `${apiDomain}${cleanUrl}`
+        }
+
+        return `${apiDomain}/${cleanUrl}`
+    }
+
+    const parseFileUrls = (fileUrls: unknown): string[] => {
+        if (Array.isArray(fileUrls)) {
+            return fileUrls.map((item) => String(item)).filter(Boolean)
+        }
+
+        if (typeof fileUrls !== 'string') {
+            return []
+        }
+
+        const raw = fileUrls.trim()
+        if (!raw) return []
+
+        // Accept JSON array string: ["url1", "url2"]
+        if (raw.startsWith('[') && raw.endsWith(']')) {
+            try {
+                const parsed = JSON.parse(raw)
+                return Array.isArray(parsed) ? parsed.map((item) => String(item)).filter(Boolean) : []
+            } catch {
+                return []
+            }
+        }
+
+        // Accept Postgres text[] style: {url1,url2}
+        if (raw.startsWith('{') && raw.endsWith('}')) {
+            return raw
+                .slice(1, -1)
+                .split(',')
+                .map((item) => item.trim().replace(/^"|"$/g, ''))
+                .filter(Boolean)
+        }
+
+        return [raw]
+    }
+
+    const isImageUrl = (url: string) => {
+        const lower = url.toLowerCase()
+        return /(\.png|\.jpg|\.jpeg|\.gif|\.webp|\.bmp|\.svg)(\?.*)?$/.test(lower)
+            || lower.includes('/image/')
+            || lower.includes('format=image')
+    }
+
+    const getMessageMediaUrls = (msg: Message) => {
+        return parseFileUrls((msg as any).fileUrls)
+            .map((url) => normalizeMediaUrl(url))
+            .filter(Boolean)
+    }
+
     // Load messages via REST API - match code mẫu
     const loadMessages = async () => {
         try {
@@ -362,6 +428,10 @@ export default function ChatQuoteFlow({
                 ) : (
                     messages.map((msg) => {
                         const isOwn = msg.senderId === currentUser.id
+                        const mediaUrls = getMessageMediaUrls(msg)
+                        const hasMedia = mediaUrls.length > 0
+                        const isImageMessage = msg.type === MessageType.IMAGE
+
                         return (
                             <div key={msg.id || Math.random()} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${isOwn ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'}`}>
@@ -399,7 +469,35 @@ export default function ChatQuoteFlow({
                                             )}
                                         </div>
                                     ) : (
-                                        <p>{msg.content}</p>
+                                        <div className="space-y-2">
+                                            {msg.content && <p>{msg.content}</p>}
+                                            {hasMedia && (
+                                                <div className={`grid gap-2 ${mediaUrls.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                                                    {mediaUrls.map((url, index) => (
+                                                        <a
+                                                            key={`${msg.id || 'msg'}-media-${index}`}
+                                                            href={url}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="block"
+                                                        >
+                                                            {isImageMessage || isImageUrl(url) ? (
+                                                                <img
+                                                                    src={url}
+                                                                    alt={`attachment-${index + 1}`}
+                                                                    className="w-full max-h-60 object-cover rounded-md border border-black/10"
+                                                                    loading="lazy"
+                                                                />
+                                                            ) : (
+                                                                <div className={`text-xs rounded-md px-3 py-2 border ${isOwn ? 'border-white/40 bg-white/10 text-white' : 'border-gray-300 bg-white text-gray-700'}`}>
+                                                                    📎 Mở tệp đính kèm {index + 1}
+                                                                </div>
+                                                            )}
+                                                        </a>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                     )}
 
                                     <p className="text-xs mt-1 opacity-70">

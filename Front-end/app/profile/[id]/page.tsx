@@ -31,14 +31,14 @@ export default function PublicProfile() {
             const data = await ProfileService.getPublicProfile(userId)
             setProfile(data)
         } catch (err) {
-            const errorMsg = err instanceof Error ? err.message : 'Failed to load profile'
+            const errorMsg = err instanceof Error ? err.message : 'Không thể tải hồ sơ'
             console.error('Error loading profile:', err)
             
             // Check for specific errors
             if (errorMsg.includes('Invalid UUID')) {
-                setError('❌ Invalid user ID format')
+                setError('❌ Định dạng ID người dùng không hợp lệ')
             } else if (errorMsg.includes('notfound') || errorMsg.includes('inactive')) {
-                setError('❌ User not found or account inactive')
+                setError('❌ Không tìm thấy người dùng hoặc tài khoản đã ngừng hoạt động')
             } else {
                 setError(errorMsg)
             }
@@ -67,7 +67,7 @@ export default function PublicProfile() {
             <div className="min-h-screen bg-gray-100 flex items-center justify-center">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600">Loading profile...</p>
+                    <p className="text-gray-600">Đang tải hồ sơ...</p>
                 </div>
             </div>
         )
@@ -77,12 +77,12 @@ export default function PublicProfile() {
         return (
             <div className="min-h-screen bg-gray-100 flex items-center justify-center">
                 <div className="bg-white rounded-lg p-8 shadow-sm max-w-md w-full text-center">
-                    <p className="text-red-600 mb-4">{error || 'User not found'}</p>
+                    <p className="text-red-600 mb-4">{error || 'Không tìm thấy người dùng'}</p>
                     <button
                         onClick={() => router.back()}
                         className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
                     >
-                        Go Back
+                        Quay lại
                     </button>
                 </div>
             </div>
@@ -101,7 +101,7 @@ export default function PublicProfile() {
                         onClick={() => router.back()}
                         className="text-blue-600 hover:text-blue-700 mb-4"
                     >
-                        ← Back
+                        ← Quay lại
                     </button>
 
                     {/* Profile Card */}
@@ -111,18 +111,18 @@ export default function PublicProfile() {
                             {profile.avatarUrl && (
                                 <img
                                     src={profile.avatarUrl}
-                                    alt="Avatar"
+                                    alt="Ảnh đại diện"
                                     className="w-32 h-32 rounded-full object-cover border-4 border-blue-600 mb-6 shadow-lg"
                                 />
                             )}
 
                             {/* Display Name with Verification Badge */}
                             <div className="flex items-center justify-center gap-2 mb-2">
-                                <h2 className="text-4xl font-bold text-gray-800">{profile.displayName || 'Anonymous User'}</h2>
+                                <h2 className="text-4xl font-bold text-gray-800">{profile.displayName || 'Người dùng ẩn danh'}</h2>
                                 {profile.isVerified && (
                                     <div className="flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold">
                                         <span>✅</span>
-                                        <span>Verified</span>
+                                        <span>Đã xác thực</span>
                                     </div>
                                 )}
                             </div>
@@ -135,7 +135,7 @@ export default function PublicProfile() {
                                         : 'bg-blue-100 text-blue-700'
                                         }`}
                                 >
-                                    {profile.role === 'provider' ? '🔧 Service Provider' : '👤 Customer'}
+                                    {profile.role === 'provider' ? '🔧 Nhà cung cấp dịch vụ' : '👤 Khách hàng'}
                                 </div>
                             )}
 
@@ -147,7 +147,7 @@ export default function PublicProfile() {
                             {/* Member Since */}
                             {profile.memberSince && (
                                 <p className="text-sm text-gray-500">
-                                    Member since {new Date(profile.memberSince).toLocaleDateString('en-US', {
+                                    Thành viên từ {new Date(profile.memberSince).toLocaleDateString('vi-VN', {
                                         year: 'numeric',
                                         month: 'long',
                                         day: 'numeric'
@@ -159,26 +159,28 @@ export default function PublicProfile() {
                         {/* Info Cards */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-8">
                             <div className="bg-blue-50 rounded-lg p-4">
-                                <p className="text-sm text-gray-600 mb-1">User ID</p>
+                                <p className="text-sm text-gray-600 mb-1">ID người dùng</p>
                                 <p className="text-gray-800 font-mono text-sm break-all">{profile.id}</p>
                             </div>
 
                             <div className="bg-green-50 rounded-lg p-4">
-                                <p className="text-sm text-gray-600 mb-1">Account Status</p>
-                                <p className="text-gray-800 font-semibold">🟢 Active</p>
+                                <p className="text-sm text-gray-600 mb-1">Trạng thái tài khoản</p>
+                                <p className="text-gray-800 font-semibold">🟢 Hoạt động</p>
                             </div>
 
                             {profile.role && (
                                 <div className="bg-purple-50 rounded-lg p-4">
-                                    <p className="text-sm text-gray-600 mb-1">Role</p>
-                                    <p className="text-gray-800 font-semibold capitalize">{profile.role}</p>
+                                    <p className="text-sm text-gray-600 mb-1">Vai trò</p>
+                                    <p className="text-gray-800 font-semibold capitalize">
+                                        {profile.role === 'provider' ? 'Nhà cung cấp dịch vụ' : 'Khách hàng'}
+                                    </p>
                                 </div>
                             )}
 
                             <div className={`${profile.isVerified ? 'bg-blue-50' : 'bg-gray-50'} rounded-lg p-4`}>
-                                <p className="text-sm text-gray-600 mb-1">Verification Status</p>
+                                <p className="text-sm text-gray-600 mb-1">Trạng thái xác thực</p>
                                 <p className="text-gray-800 font-semibold">
-                                    {profile.isVerified ? '✅ Verified' : '⏳ Not Verified'}
+                                    {profile.isVerified ? '✅ Đã xác thực' : '⏳ Chưa xác thực'}
                                 </p>
                             </div>
                         </div>
@@ -188,8 +190,8 @@ export default function PublicProfile() {
                     <div className="bg-white rounded-lg shadow-sm mb-6">
                         <div className="flex border-b">
                             {[
-                                { key: 'about', label: '📋 About' },
-                                { key: 'posts', label: '📝 Posts' },
+                                { key: 'about', label: '📋 Giới thiệu' },
+                                { key: 'posts', label: '📝 Bài đăng' },
                             ].map(tab => (
                                 <button
                                     key={tab.key}
@@ -216,34 +218,36 @@ export default function PublicProfile() {
                         {activeTab === 'about' && (
                             <div className="space-y-6">
                                 <div>
-                                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Profile Information</h3>
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Thông tin hồ sơ</h3>
                                     <div className="space-y-4">
                                         {profile.displayName && (
                                             <div className="flex gap-4">
-                                                <span className="font-semibold text-gray-600 min-w-32">Display Name:</span>
+                                                <span className="font-semibold text-gray-600 min-w-32">Tên hiển thị:</span>
                                                 <span className="text-gray-800">{profile.displayName}</span>
                                             </div>
                                         )}
 
                                         {profile.role && (
                                             <div className="flex gap-4">
-                                                <span className="font-semibold text-gray-600 min-w-32">Role:</span>
-                                                <span className="text-gray-800 capitalize">{profile.role}</span>
+                                                <span className="font-semibold text-gray-600 min-w-32">Vai trò:</span>
+                                                <span className="text-gray-800 capitalize">
+                                                    {profile.role === 'provider' ? 'Nhà cung cấp dịch vụ' : 'Khách hàng'}
+                                                </span>
                                             </div>
                                         )}
 
                                         <div className="flex gap-4">
-                                            <span className="font-semibold text-gray-600 min-w-32">Verification:</span>
+                                            <span className="font-semibold text-gray-600 min-w-32">Xác thực:</span>
                                             <span className={profile.isVerified ? 'text-green-600 font-semibold' : 'text-gray-600'}>
-                                                {profile.isVerified ? '✅ Verified' : '⏳ Not Verified'}
+                                                {profile.isVerified ? '✅ Đã xác thực' : '⏳ Chưa xác thực'}
                                             </span>
                                         </div>
 
                                         {profile.memberSince && (
                                             <div className="flex gap-4">
-                                                <span className="font-semibold text-gray-600 min-w-32">Member Since:</span>
+                                                <span className="font-semibold text-gray-600 min-w-32">Tham gia từ:</span>
                                                 <span className="text-gray-800">
-                                                    {new Date(profile.memberSince).toLocaleDateString('en-US', {
+                                                    {new Date(profile.memberSince).toLocaleDateString('vi-VN', {
                                                         year: 'numeric',
                                                         month: 'long',
                                                         day: 'numeric'
@@ -256,24 +260,24 @@ export default function PublicProfile() {
 
                                 {profile.bio && (
                                     <div className="border-t pt-6">
-                                        <h3 className="text-lg font-semibold text-gray-800 mb-3">Bio</h3>
+                                        <h3 className="text-lg font-semibold text-gray-800 mb-3">Giới thiệu</h3>
                                         <p className="text-gray-700 leading-relaxed">{profile.bio}</p>
                                     </div>
                                 )}
 
                                 <div className="border-t pt-6">
-                                    <h3 className="text-lg font-semibold text-gray-800 mb-3">Account Details</h3>
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-3">Chi tiết tài khoản</h3>
                                     <div className="bg-gray-50 rounded-lg p-4">
-                                        <p className="text-sm text-gray-600 mb-2">User ID</p>
+                                        <p className="text-sm text-gray-600 mb-2">ID người dùng</p>
                                         <p className="text-gray-800 font-mono text-sm break-all">{profile.id}</p>
                                     </div>
                                 </div>
 
                                 {profile.role === 'provider' && (
                                     <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
-                                        <h4 className="font-semibold text-purple-900 mb-2">🔧 Service Provider</h4>
+                                        <h4 className="font-semibold text-purple-900 mb-2">🔧 Nhà cung cấp dịch vụ</h4>
                                         <p className="text-sm text-purple-800">
-                                            This user offers professional services. You can view their service requests and reviews.
+                                            Người dùng này cung cấp dịch vụ chuyên nghiệp. Bạn có thể xem yêu cầu dịch vụ và đánh giá của họ.
                                         </p>
                                     </div>
                                 )}
@@ -286,13 +290,13 @@ export default function PublicProfile() {
                                 {postsLoading && (
                                     <div className="text-center py-8">
                                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                                        <p className="text-gray-600">Loading posts...</p>
+                                        <p className="text-gray-600">Đang tải bài đăng...</p>
                                     </div>
                                 )}
 
                                 {!postsLoading && userPosts.length === 0 && (
                                     <div className="text-center py-8">
-                                        <p className="text-gray-600">No posts yet</p>
+                                        <p className="text-gray-600">Chưa có bài đăng nào</p>
                                     </div>
                                 )}
 
@@ -324,7 +328,7 @@ export default function PublicProfile() {
                                                                 : 'bg-gray-100 text-gray-800'
                                                             }`}
                                                     >
-                                                        {post.status === 'open' ? '✅ Open' : post.status === 'closed' ? '❌ Closed' : post.status}
+                                                        {post.status === 'open' ? '✅ Đang mở' : post.status === 'closed' ? '❌ Đã đóng' : post.status}
                                                     </span>
                                                 </div>
                                             </div>
@@ -337,15 +341,15 @@ export default function PublicProfile() {
 
                     {/* Contact Section */}
                     <div className="mt-8 mb-8 bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
-                        <h3 className="font-semibold text-blue-900 mb-3">Interested in this user&apos;s services?</h3>
+                        <h3 className="font-semibold text-blue-900 mb-3">Bạn quan tâm đến dịch vụ của người dùng này?</h3>
                         <p className="text-blue-800 text-sm mb-4">
-                            {profile.role === 'provider' ? 'Create a service request and get in touch with this professional.' : 'Check their posts and connect directly.'}
+                            {profile.role === 'provider' ? 'Hãy tạo yêu cầu dịch vụ để kết nối với nhà cung cấp này.' : 'Bạn có thể xem bài đăng và liên hệ trực tiếp.'}
                         </p>
                         <button
                             onClick={() => router.push('/posts/create')}
                             className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 font-semibold"
                         >
-                            📝 Create Service Request
+                            📝 Tạo yêu cầu dịch vụ
                         </button>
                     </div>
                 </div>

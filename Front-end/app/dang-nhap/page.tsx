@@ -59,6 +59,9 @@ export default function DangNhap() {
         localStorage.setItem('user_data', JSON.stringify(response.user))
       }
 
+      // Reset cờ thông báo hết phiên để lần hết hạn tiếp theo vẫn hiển thị alert
+      sessionStorage.removeItem('auth_expired_notice_shown')
+
       // Chuyển hướng đến trang home
       router.push('/home')
     } catch (err) {

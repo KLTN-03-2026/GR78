@@ -10,6 +10,28 @@ import type {
 // Service để xử lý Posts
 export class PostService {
 
+  private static extractApiErrorMessage(data: any, fallback: string): string {
+    if (!data) return fallback
+
+    if (typeof data.userMessage === 'string' && data.userMessage.trim()) {
+      return data.userMessage
+    }
+
+    if (typeof data.message === 'string' && data.message.trim()) {
+      return data.message
+    }
+
+    if (Array.isArray(data.message) && data.message.length > 0) {
+      return String(data.message[0])
+    }
+
+    if (typeof data.error === 'string' && data.error.trim()) {
+      return data.error
+    }
+
+    return fallback
+  }
+
   // Lấy access token từ localStorage
   private static getAuthHeaders(): HeadersInit {
     const token = typeof window !== 'undefined' 
@@ -106,13 +128,14 @@ export class PostService {
         if (response.status === 401) {
           throw new Error('Bạn chưa đăng nhập hoặc phiên làm việc đã hết hạn. Vui lòng đăng nhập lại!')
         } else if (response.status === 403) {
-          throw new Error('Bạn không có quyền thực hiện hành động này!')
+          const message = this.extractApiErrorMessage(data, 'Bạn không có quyền thực hiện hành động này!')
+          throw new Error(message)
         } else if (response.status === 400) {
-          const errorMessage = data.message || 'Dữ liệu không hợp lệ'
+          const errorMessage = this.extractApiErrorMessage(data, 'Dữ liệu không hợp lệ')
           throw new Error(errorMessage)
         }
         
-        const errorMessage = data.message || data.error || 'Không thể tạo bài đăng'
+        const errorMessage = this.extractApiErrorMessage(data, 'Không thể tạo bài đăng')
         console.error('❌ Create Post Failed:', errorMessage)
         throw new Error(errorMessage)
       }
@@ -167,7 +190,7 @@ export class PostService {
           throw new Error('Bạn chưa đăng nhập hoặc phiên làm việc đã hết hạn. Vui lòng đăng nhập lại!')
         }
 
-        throw new Error(data.message || data.error || 'Không thể tạo bài đăng với ảnh')
+        throw new Error(this.extractApiErrorMessage(data, 'Không thể tạo bài đăng với ảnh'))
       }
 
       return data
@@ -190,7 +213,7 @@ export class PostService {
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.message || 'Không thể cập nhật bài đăng')
+        throw new Error(this.extractApiErrorMessage(errorData, 'Không thể cập nhật bài đăng'))
       }
 
       const data = await response.json()

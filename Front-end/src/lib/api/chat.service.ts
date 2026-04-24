@@ -59,6 +59,11 @@ const getAccessToken = () => {
   return null
 }
 
+const emitChatUnreadRefresh = () => {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent('chat:refresh-unread-count'))
+}
+
 // Generic API call function - calls Next.js API routes instead of backend directly
 async function apiCall<T>(
   endpoint: string,
@@ -147,16 +152,35 @@ export const chatService = {
 
   // POST /chat/conversations/{id}/read - Đánh dấu tin nhắn đã đọc
   async markAsRead(conversationId: string): Promise<void> {
-    return apiCall<void>(`/chat/conversations/${conversationId}/read`, {
+    const result = await apiCall<void>(`/chat/conversations/${conversationId}/read`, {
       method: 'POST',
     })
+    emitChatUnreadRefresh()
+    return result
   },
 
   // GET /chat/unread-count - Đếm tổng tin nhắn chưa đọc
   async getUnreadCount(): Promise<{ unreadCount: number }> {
-    return apiCall<{ unreadCount: number }>('/chat/unread-count', {
+    const data = await apiCall<any>('/chat/unread-count', {
       method: 'GET',
     })
+
+    // Backend có thể trả về nhiều format: { unreadCount }, { count }, number, hoặc nested data
+    if (typeof data === 'number') {
+      return { unreadCount: data }
+    }
+
+    const unreadCount =
+      Number(data?.unreadCount) ||
+      Number(data?.count) ||
+      Number(data?.unread) ||
+      Number(data?.totalUnread) ||
+      Number(data?.unreadMessages) ||
+      Number(data?.data?.unreadCount) ||
+      Number(data?.data?.count) ||
+      0
+
+    return { unreadCount }
   },
 
   // POST /chat/conversations/{id}/close - Đóng conversation
@@ -169,7 +193,7 @@ export const chatService = {
   // GET /chat/search - Tìm kiếm tin nhắn
   async searchMessages(params: SearchMessagesParams): Promise<Message[]> {
     const queryParams = new URLSearchParams({
-      query: params.query,
+      keyword: params.query,
       ...(params.limit && { limit: params.limit.toString() }),
     })
 

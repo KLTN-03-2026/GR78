@@ -156,6 +156,9 @@ class ChatSocketService {
       }
 
       this.socket.emit('mark_read', { conversationId }, (response: any) => {
+        if (response?.success && typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('chat:refresh-unread-count'))
+        }
         resolve(response)
       })
     })

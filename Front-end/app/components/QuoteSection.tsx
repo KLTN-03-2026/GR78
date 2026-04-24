@@ -17,6 +17,25 @@ export default function QuoteSection({ postId, isPostOwner }: QuoteSectionProps)
   const [quotes, setQuotes] = useState<Quote[]>([])
   const [loading, setLoading] = useState(false)
 
+  const normalizeImageUrl = (rawUrl?: string | null) => {
+    if (!rawUrl) return ''
+    const cleanUrl = rawUrl.trim()
+    if (!cleanUrl) return ''
+
+    if (/^https?:\/\//i.test(cleanUrl) || cleanUrl.startsWith('data:')) {
+      return cleanUrl
+    }
+
+    const apiDomain = (process.env.NEXT_PUBLIC_API_DOMAIN || process.env.NEXT_PUBLIC_API_URL || '').replace(/\/api\/v1\/?$/, '')
+    if (!apiDomain) return cleanUrl
+
+    if (cleanUrl.startsWith('/')) {
+      return `${apiDomain}${cleanUrl}`
+    }
+
+    return `${apiDomain}/${cleanUrl}`
+  }
+
   const normalizeQuoteStatus = (status?: string): Quote['status'] => {
     const normalized = status?.toUpperCase()
 
@@ -47,20 +66,30 @@ export default function QuoteSection({ postId, isPostOwner }: QuoteSectionProps)
 
       const enhancedQuotes = await Promise.all(
         data.map(async (quote) => {
+          const quoteData = quote as any
           let providerName = quote.providerName || 'Thợ'
-          let providerAvatar: string | undefined = quote.providerAvatar || undefined
+          let providerAvatar: string | undefined =
+            normalizeImageUrl(
+              quote.providerAvatar ||
+              quoteData.providerAvatarUrl ||
+              quoteData.avatar ||
+              quoteData.avatarUrl ||
+              quoteData.provider?.avatar ||
+              quoteData.provider?.avatarUrl
+            ) || undefined
 
           if (quote.providerId) {
             try {
               const profile = await ProfileService.getUserProfile(quote.providerId)
-              providerName = profile.displayName || profile.fullName || providerName
-              providerAvatar = profile.avatar || providerAvatar
+              const profileData = profile as any
+              providerName = profileData.displayName || profileData.fullName || providerName
+              providerAvatar = normalizeImageUrl(profileData.avatarUrl || profileData.avatar || providerAvatar) || providerAvatar
 
               if (!providerAvatar && typeof window !== 'undefined') {
                 const avatarKey = `user_avatar_${quote.providerId}`
                 const savedAvatar = localStorage.getItem(avatarKey)
                 if (savedAvatar) {
-                  providerAvatar = savedAvatar
+                  providerAvatar = normalizeImageUrl(savedAvatar) || undefined
                 }
               }
             } catch (error) {
