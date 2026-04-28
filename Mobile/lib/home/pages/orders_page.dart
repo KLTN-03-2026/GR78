@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:mobile_app_doan/core/widgets/app_empty_state.dart';
+import 'package:mobile_app_doan/core/widgets/app_error_state.dart';
+import 'package:mobile_app_doan/core/widgets/app_list_skeleton.dart';
 import 'package:mobile_app_doan/home/controllers/order_controller.dart';
 import 'package:mobile_app_doan/home/pages/order_detail_page.dart';
 
@@ -32,8 +35,10 @@ class _OrdersPageState extends State<OrdersPage> {
   @override
   Widget build(BuildContext context) {
     final oc = Get.find<OrderController>();
+    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
+      backgroundColor: scheme.surfaceContainerLowest,
       appBar: AppBar(
         title: const Text('Đơn hàng'),
         actions: [
@@ -52,7 +57,7 @@ class _OrdersPageState extends State<OrdersPage> {
               if (text.isEmpty) return const SizedBox.shrink();
               return Align(
                 alignment: Alignment.centerLeft,
-                child: Text(text, style: TextStyle(color: Colors.grey[700])),
+                child: Text(text, style: TextStyle(color: scheme.onSurfaceVariant)),
               );
             }),
           ),
@@ -96,16 +101,19 @@ class _OrdersPageState extends State<OrdersPage> {
           Expanded(
             child: Obx(() {
               if (oc.isLoading.value && oc.orders.isEmpty) {
-                return const Center(child: CircularProgressIndicator());
+                return const AppListSkeleton(itemCount: 4);
               }
               if (oc.orders.isEmpty) {
-                return Center(
-                  child: Text(
-                    oc.errorMessage.value.isEmpty
-                        ? 'Chưa có đơn hàng'
-                        : oc.errorMessage.value,
-                    textAlign: TextAlign.center,
-                  ),
+                final err = oc.errorMessage.value;
+                if (err.isNotEmpty) {
+                  return AppErrorState(message: err, onRetry: _reload);
+                }
+                return AppEmptyState(
+                  title: 'Chưa có đơn hàng',
+                  subtitle: 'Đơn từ báo giá và công việc sẽ hiển thị tại đây.',
+                  icon: Icons.receipt_long_outlined,
+                  actionLabel: 'Làm mới',
+                  onAction: _reload,
                 );
               }
               return RefreshIndicator(

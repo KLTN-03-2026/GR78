@@ -19,7 +19,7 @@ class Article extends StatelessWidget {
   final ArticleMenuType menuType;
 
   const Article({
-    Key? key,
+    super.key,
     required this.postResponseDto,
     required this.isSaved,
     required this.onSave,
@@ -30,7 +30,7 @@ class Article extends StatelessWidget {
     this.onViewDetail,
     this.onReport,
     this.menuType = ArticleMenuType.profile,
-  }) : super(key: key);
+  });
 
   /// Parse desired time safely
   String _formatDesiredTime(dynamic desiredTime) {
@@ -92,306 +92,288 @@ class Article extends StatelessWidget {
     final images = postResponseDto.imageUrls?.toList() ?? [];
     final firstImage = images.isNotEmpty ? images.first : null;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // --- Header ---
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: Colors.grey[200],
-                  backgroundImage: useNetworkAvatar
-                      ? NetworkImage(avatarUrl)
-                      : null,
-                  child: !useNetworkAvatar
-                      ? const Icon(Icons.person, color: Colors.grey)
-                      : null,
-                ),
-                const SizedBox(width: 10),
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final muted = scheme.onSurfaceVariant;
 
-                // USER NAME + STATUS
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        fullName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        status.toString(),
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
-                    ],
+    return RepaintBoundary(
+      child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: scheme.surfaceContainerHighest,
+                    backgroundImage:
+                        useNetworkAvatar ? NetworkImage(avatarUrl) : null,
+                    child: !useNetworkAvatar
+                        ? Icon(Icons.person, color: muted)
+                        : null,
                   ),
-                ),
-
-                // MENU 3 CHẤM
-                PopupMenuButton<String>(
-                  onSelected: (value) async {
-                    switch (value) {
-                      case 'edit':
-                        onEdit?.call();
-                        break;
-                      case 'delete':
-                        onDelete?.call();
-                        break;
-                      case 'view':
-                        onViewDetail?.call();
-                        break;
-                      case 'report':
-                        onReport?.call();
-                        break;
-                      case 'quotes':
-                        onViewQuotes?.call();
-                        break;
-                    }
-                  },
-                  itemBuilder: (context) {
-                    if (menuType == ArticleMenuType.home) {
-                      return const [
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          fullName,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          status.toString(),
+                          style: theme.textTheme.bodySmall?.copyWith(color: muted),
+                        ),
+                      ],
+                    ),
+                  ),
+                  PopupMenuButton<String>(
+                    onSelected: (value) async {
+                      switch (value) {
+                        case 'edit':
+                          onEdit?.call();
+                          break;
+                        case 'delete':
+                          onDelete?.call();
+                          break;
+                        case 'view':
+                          onViewDetail?.call();
+                          break;
+                        case 'report':
+                          onReport?.call();
+                          break;
+                        case 'quotes':
+                          onViewQuotes?.call();
+                          break;
+                      }
+                    },
+                    itemBuilder: (ctx) {
+                      final p = Theme.of(ctx).colorScheme.primary;
+                      final e = Theme.of(ctx).colorScheme.error;
+                      if (menuType == ArticleMenuType.home) {
+                        return [
+                          PopupMenuItem(
+                            value: 'view',
+                            child: Row(
+                              children: [
+                                Icon(LucideIcons.eye, size: 16, color: p),
+                                const SizedBox(width: 8),
+                                const Text('Xem chi tiết'),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'report',
+                            child: Row(
+                              children: [
+                                Icon(LucideIcons.flag, size: 16, color: e),
+                                const SizedBox(width: 8),
+                                Text('Báo cáo', style: TextStyle(color: e)),
+                              ],
+                            ),
+                          ),
+                        ];
+                      }
+                      return [
+                        if (onViewQuotes != null)
+                          PopupMenuItem(
+                            value: 'quotes',
+                            child: Row(
+                              children: [
+                                Icon(LucideIcons.fileText, size: 16, color: p),
+                                const SizedBox(width: 8),
+                                const Text('Xem báo giá'),
+                              ],
+                            ),
+                          ),
                         PopupMenuItem(
-                          value: 'view',
+                          value: 'edit',
                           child: Row(
                             children: [
-                              Icon(LucideIcons.eye, size: 16, color: Colors.teal),
-                              SizedBox(width: 8),
-                              Text('Xem chi tiết'),
+                              Icon(LucideIcons.edit2, size: 16, color: p),
+                              const SizedBox(width: 8),
+                              const Text('Chỉnh sửa'),
                             ],
                           ),
                         ),
                         PopupMenuItem(
-                          value: 'report',
+                          value: 'delete',
                           child: Row(
                             children: [
-                              Icon(LucideIcons.flag, size: 16, color: Colors.red),
-                              SizedBox(width: 8),
-                              Text('Báo cáo', style: TextStyle(color: Colors.red)),
+                              Icon(LucideIcons.trash2, size: 16, color: e),
+                              const SizedBox(width: 8),
+                              Text('Xóa', style: TextStyle(color: e)),
                             ],
                           ),
                         ),
                       ];
-                    }
-
-                    return [
-                      if (onViewQuotes != null)
-                        const PopupMenuItem(
-                          value: 'quotes',
-                          child: Row(
-                            children: [
-                              Icon(LucideIcons.fileText,
-                                  size: 16, color: Colors.teal),
-                              SizedBox(width: 8),
-                              Text('Xem báo giá'),
-                            ],
-                          ),
-                        ),
-                      const PopupMenuItem(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            Icon(LucideIcons.edit2, size: 16, color: Colors.teal),
-                            SizedBox(width: 8),
-                            Text('Chỉnh sửa'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(LucideIcons.trash2, size: 16, color: Colors.red),
-                            SizedBox(width: 8),
-                            Text('Xóa', style: TextStyle(color: Colors.red)),
-                          ],
-                        ),
-                      ),
-                    ];
-                  },
-                  icon: const Icon(LucideIcons.moreVertical, size: 18),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 8),
-
-            // --- Title ---
-            Text(
-              title,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-
-            const SizedBox(height: 6),
-
-            // --- Description ---
-            if (description.isNotEmpty)
+                    },
+                    icon: Icon(LucideIcons.moreVertical, size: 18, color: muted),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
               Text(
-                description,
-                style: TextStyle(color: Colors.grey[700], fontSize: 13),
-                maxLines: 3,
+                title,
+                style: theme.textTheme.titleMedium?.copyWith(fontSize: 15),
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-
-            const SizedBox(height: 10),
-
-            // --- IMAGE ---
-            if (firstImage != null)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  firstImage,
-                  height: 160,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      height: 160,
-                      color: Colors.grey[200],
-                      child: const Center(
-                        child: Icon(LucideIcons.image, color: Colors.grey),
-                      ),
-                    );
-                  },
+              const SizedBox(height: 6),
+              if (description.isNotEmpty)
+                Text(
+                  description,
+                  style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
                 ),
+              const SizedBox(height: 10),
+              if (firstImage != null)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    firstImage,
+                    height: 160,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    filterQuality: FilterQuality.medium,
+                    errorBuilder: (ctx, error, stackTrace) {
+                      return Container(
+                        height: 160,
+                        color: scheme.surfaceContainerHighest,
+                        child: Icon(LucideIcons.image, color: muted),
+                      );
+                    },
+                  ),
+                ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Icon(LucideIcons.mapPin, size: 14, color: scheme.primary),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      location,
+                      style: theme.textTheme.bodySmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
-
-            const SizedBox(height: 10),
-
-            // --- LOCATION ---
-            Row(
-              children: [
-                const Icon(LucideIcons.mapPin, size: 14, color: Colors.teal),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    location,
-                    style: const TextStyle(fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 4),
-
-            // --- TIME + BUDGET ---
-            Row(
-              children: [
-                const Icon(LucideIcons.clock, size: 14, color: Colors.orange),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    desiredTime,
-                    style: const TextStyle(fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Icon(
-                  LucideIcons.dollarSign,
-                  size: 14,
-                  color: Colors.green,
-                ),
-                Expanded(
-                  child: Text(
-                    "$budget đ",
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(LucideIcons.clock, size: 14, color: scheme.tertiary),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      desiredTime,
+                      style: theme.textTheme.bodySmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
-            ),
-
-            const Divider(height: 18),
-
-            // --- ACTION BUTTONS ---
-            Row(
-              children: [
-                if (onbid != null)
+                  const SizedBox(width: 8),
+                  Icon(LucideIcons.dollarSign, size: 14, color: scheme.secondary),
+                  Expanded(
+                    child: Text(
+                      '$budget đ',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              Divider(height: 18, color: scheme.outlineVariant.withValues(alpha: 0.5)),
+              Row(
+                children: [
+                  if (onbid != null)
+                    Expanded(
+                      child: _actionButton(
+                        context: context,
+                        icon: LucideIcons.messageCircle,
+                        label: 'Chào giá',
+                        active: false,
+                        onTap: onbid,
+                      ),
+                    ),
+                  if (onViewQuotes != null)
+                    Expanded(
+                      child: _actionButton(
+                        context: context,
+                        icon: LucideIcons.fileText,
+                        label: 'Báo giá',
+                        active: false,
+                        onTap: onViewQuotes,
+                      ),
+                    ),
                   Expanded(
                     child: _actionButton(
-                      icon: LucideIcons.messageCircle,
-                      label: "Chào giá",
-                      active: false,
-                      onTap: onbid,
+                      context: context,
+                      icon: LucideIcons.bookmark,
+                      label: 'Lưu',
+                      active: isSaved,
+                      onTap: onSave,
                     ),
                   ),
-                if (onViewQuotes != null)
-                  Expanded(
-                    child: _actionButton(
-                      icon: LucideIcons.fileText,
-                      label: "Báo giá",
-                      active: false,
-                      onTap: onViewQuotes,
-                    ),
-                  ),
-                Expanded(
-                  child: _actionButton(
-                    icon: LucideIcons.bookmark,
-                    label: "Lưu",
-                    active: isSaved,
-                    onTap: onSave,
-                  ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _actionButton({
+    required BuildContext context,
     required IconData icon,
     required String label,
     required bool active,
     VoidCallback? onTap,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 18,
-              color: active ? Colors.teal : Colors.grey[600],
-            ),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                color: active ? Colors.teal : Colors.grey[700],
-                fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+    final scheme = Theme.of(context).colorScheme;
+    final primary = scheme.primary;
+    final muted = scheme.onSurfaceVariant;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        splashColor: primary.withValues(alpha: 0.12),
+        highlightColor: primary.withValues(alpha: 0.06),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 18, color: active ? primary : muted),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: active ? primary : scheme.onSurface,
+                  fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

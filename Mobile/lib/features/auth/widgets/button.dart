@@ -1,30 +1,19 @@
 import 'package:flutter/material.dart';
 
+/// Primary CTA — uses [ThemeData] filled button styling from [AppTheme].
 class PrimaryButton extends StatelessWidget {
   final String text;
   final VoidCallback onPressed;
 
-  const PrimaryButton({Key? key, required this.text, required this.onPressed})
-    : super(key: key);
+  const PrimaryButton({super.key, required this.text, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        backgroundColor: const Color(0xFF14B8A6),
-      ),
-      child: Center(
-        child: Text(
-          text,
-          style: const TextStyle(
-            fontSize: 18,
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton(
+        onPressed: onPressed,
+        child: Text(text),
       ),
     );
   }

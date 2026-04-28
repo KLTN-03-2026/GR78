@@ -3,6 +3,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:mobile_app_doan/core/theme/app_colors.dart';
+import 'package:mobile_app_doan/core/widgets/app_empty_state.dart';
+import 'package:mobile_app_doan/core/widgets/app_error_state.dart';
 import 'package:mobile_app_doan/features/auth/controllers/auth_controller.dart';
 import 'package:mobile_app_doan/features/auth/widgets/button.dart';
 import 'package:mobile_app_doan/home/controllers/post_controller.dart';
@@ -36,14 +39,19 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
 
     return Obx(() {
       if (profileController.isLoading.value) {
-        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        return const Scaffold(
+          body: Center(child: CircularProgressIndicator()),
+        );
       }
 
       final profile = profileController.profile.value;
 
       if (profile == null) {
-        return const Scaffold(
-          body: Center(child: Text("Không tải được thông tin người dùng")),
+        return Scaffold(
+          body: AppErrorState(
+            message: 'Không tải được thông tin người dùng',
+            onRetry: () => profileController.loadProfile(),
+          ),
         );
       }
 
@@ -56,20 +64,14 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
     final showAvatarNetwork = isHttpImageUrl(avatarForNetwork);
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
       body: SafeArea(
         child: Column(
           children: [
             // Cover
             Container(
               height: 80,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF14B8A6), Color(0xFF0D9488)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
+              decoration: const BoxDecoration(gradient: AppColors.brandGradient),
             ),
 
             // Profile card
@@ -79,13 +81,13 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
                 transform: Matrix4.translationValues(0, -40, 0),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 10,
-                      offset: Offset(0, 4),
+                      color: Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
@@ -96,7 +98,7 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
                       backgroundImage: showAvatarNetwork
                           ? NetworkImage(avatarForNetwork!)
                           : null,
-                      backgroundColor: Colors.teal,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
                       child: !showAvatarNetwork
                           ? Text(
                               profile.displayName != null &&
@@ -172,7 +174,7 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
 
             // Tab buttons
             Container(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.surface,
               child: Row(
                 children: [
                   Expanded(
@@ -221,7 +223,11 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
       }
 
       if (controller.posts.isEmpty) {
-        return const Center(child: Text("Bạn chưa có bài đăng nào"));
+        return const AppEmptyState(
+          title: 'Bạn chưa có bài đăng nào',
+          subtitle: 'Đăng yêu cầu để thợ có thể báo giá.',
+          icon: Icons.post_add_outlined,
+        );
       }
 
       return ListView.separated(
@@ -312,14 +318,14 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            backgroundColor: Colors.teal[50],
-            child: Icon(icon, color: Colors.teal),
+            CircleAvatar(
+            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+            child: Icon(icon, color: Theme.of(context).colorScheme.primary),
           ),
           const SizedBox(width: 12),
           Column(
@@ -327,7 +333,7 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
             children: [
               Text(
                 title,
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                style: Theme.of(context).textTheme.bodySmall,
               ),
               Text(
                 subtitle,
@@ -348,7 +354,10 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 4),
-        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
       ],
     );
   }
@@ -361,7 +370,7 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: active ? const Color(0xFF14B8A6) : Colors.transparent,
+              color: active ? AppColors.seed : Colors.transparent,
               width: 2,
             ),
           ),
@@ -370,7 +379,9 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
           child: Text(
             label,
             style: TextStyle(
-              color: active ? const Color(0xFF14B8A6) : Colors.grey[700],
+              color: active
+                  ? AppColors.seed
+                  : Theme.of(context).colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w600,
             ),
           ),

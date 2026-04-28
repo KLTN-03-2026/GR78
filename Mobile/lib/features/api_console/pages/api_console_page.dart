@@ -126,7 +126,9 @@ class _ApiConsolePageState extends State<ApiConsolePage> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
+      backgroundColor: scheme.surfaceContainerLowest,
       appBar: AppBar(
         title: const Text('API Console (OpenAPI)'),
       ),
@@ -254,14 +256,14 @@ class _ApiConsolePageState extends State<ApiConsolePage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.black,
+                color: scheme.inverseSurface,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: SelectableText(
                 _result.isEmpty ? '(chưa có)' : _result,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'monospace',
-                  color: Colors.white,
+                  color: scheme.onInverseSurface,
                   fontSize: 12,
                 ),
               ),

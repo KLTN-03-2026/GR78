@@ -126,8 +126,10 @@ class _SearchTabState extends State<SearchTab> {
   @override
   Widget build(BuildContext context) {
     final bool isEmpty = searchQuery.trim().isEmpty;
+    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
+      backgroundColor: scheme.surfaceContainerLowest,
       body: Column(
         children: [
           HeaderApp(
@@ -161,15 +163,15 @@ class _SearchTabState extends State<SearchTab> {
               padding: const EdgeInsets.all(16),
               children: [
                 if (isEmpty) ...[
-                  _buildTrending(),
+                  _buildTrending(context),
                   const SizedBox(height: 20),
-                  _buildRecent(),
+                  _buildRecent(context),
                   const SizedBox(height: 20),
-                  _buildCategories(),
+                  _buildCategories(context),
                 ] else if (_searchMode == 'users') ...[
-                  _buildUserSearchResults(),
+                  _buildUserSearchResults(context),
                 ] else ...[
-                  _buildGlobalSearchResults(),
+                  _buildGlobalSearchResults(context),
                 ],
               ],
             ),
@@ -179,17 +181,18 @@ class _SearchTabState extends State<SearchTab> {
     );
   }
 
-  Widget _buildTrending() {
+  Widget _buildTrending(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          children: const [
-            Icon(LucideIcons.trendingUp, color: Colors.teal),
-            SizedBox(width: 8),
+          children: [
+            Icon(LucideIcons.trendingUp, color: scheme.primary),
+            const SizedBox(width: 8),
             Text(
-              "Tìm kiếm phổ biến",
-              style: TextStyle(fontWeight: FontWeight.w600),
+              'Tìm kiếm phổ biến',
+              style: Theme.of(context).textTheme.titleSmall,
             ),
           ],
         ),
@@ -199,9 +202,9 @@ class _SearchTabState extends State<SearchTab> {
           runSpacing: 8,
           children: trendingSearches.map((item) {
             return ActionChip(
-              label: Text("${item['icon']} ${item['text']}"),
+              label: Text('${item['icon']} ${item['text']}'),
               onPressed: () => _onSearchInput(item['text']! as String),
-              backgroundColor: Colors.grey[100],
+              backgroundColor: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
             );
           }).toList(),
         ),
@@ -209,18 +212,19 @@ class _SearchTabState extends State<SearchTab> {
     );
   }
 
-  Widget _buildRecent() {
+  Widget _buildRecent(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          "Tìm kiếm gần đây",
-          style: TextStyle(fontWeight: FontWeight.w600),
+        Text(
+          'Tìm kiếm gần đây',
+          style: Theme.of(context).textTheme.titleSmall,
         ),
         const SizedBox(height: 8),
         ...recentSearches.map(
           (e) => ListTile(
-            leading: const Icon(LucideIcons.clock, color: Colors.grey),
+            leading: Icon(LucideIcons.clock, color: scheme.onSurfaceVariant),
             title: Text(e),
             onTap: () => _onSearchInput(e),
           ),
@@ -229,11 +233,12 @@ class _SearchTabState extends State<SearchTab> {
     );
   }
 
-  Widget _buildCategories() {
+  Widget _buildCategories(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Danh mục", style: TextStyle(fontWeight: FontWeight.w600)),
+        Text('Danh mục', style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 10),
         GridView.builder(
           shrinkWrap: true,
@@ -250,7 +255,7 @@ class _SearchTabState extends State<SearchTab> {
               child: Container(
                 margin: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
+                  color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Column(
@@ -272,7 +277,8 @@ class _SearchTabState extends State<SearchTab> {
     );
   }
 
-  Widget _buildUserSearchResults() {
+  Widget _buildUserSearchResults(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final pc = Get.find<ProfileController>();
     return Obx(() {
       if (pc.searchLoading.value) {
@@ -289,6 +295,7 @@ class _SearchTabState extends State<SearchTab> {
             pc.errorMessage.value.isEmpty
                 ? 'Không tìm thấy người dùng'
                 : pc.errorMessage.value,
+            style: Theme.of(context).textTheme.bodyLarge,
           ),
         );
       }
@@ -297,7 +304,7 @@ class _SearchTabState extends State<SearchTab> {
         children: [
           Text(
             'Kết quả cho “$searchQuery” (${res.count}/${res.total})',
-            style: const TextStyle(fontWeight: FontWeight.bold),
+            style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 10),
           ...res.profiles.map(
@@ -305,12 +312,12 @@ class _SearchTabState extends State<SearchTab> {
               margin: const EdgeInsets.symmetric(vertical: 8),
               child: ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: Colors.teal,
+                  backgroundColor: scheme.primaryContainer,
                   backgroundImage: isHttpImageUrl(p.avatarUrl)
                       ? NetworkImage(p.avatarUrl!)
                       : null,
                   child: !isHttpImageUrl(p.avatarUrl)
-                      ? const Icon(Icons.person, color: Colors.white)
+                      ? Icon(Icons.person, color: scheme.onPrimaryContainer)
                       : null,
                 ),
                 title: Text(p.displayName ?? 'Người dùng'),
@@ -320,7 +327,7 @@ class _SearchTabState extends State<SearchTab> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 trailing: p.isVerified
-                    ? const Icon(Icons.verified, color: Colors.teal)
+                    ? Icon(Icons.verified, color: scheme.primary)
                     : null,
               ),
             ),
@@ -335,7 +342,7 @@ class _SearchTabState extends State<SearchTab> {
     return v.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
   }
 
-  Widget _buildGlobalSearchResults() {
+  Widget _buildGlobalSearchResults(BuildContext context) {
     if (_globalLoading) {
       return const Padding(
         padding: EdgeInsets.all(32),

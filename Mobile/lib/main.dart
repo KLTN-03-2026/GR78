@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile_app_doan/core/api.dart';
+import 'package:mobile_app_doan/core/theme/app_motion.dart';
+import 'package:mobile_app_doan/core/theme/app_theme.dart';
 import 'package:mobile_app_doan/features/auth/controllers/auth_controller.dart';
 import 'package:mobile_app_doan/features/auth/controllers/pages/auth_mobile.dart';
 import 'package:mobile_app_doan/features/auth/controllers/pages/login_page.dart';
@@ -10,6 +12,8 @@ import 'package:mobile_app_doan/features/auth/services/auth_service.dart';
 import 'package:mobile_app_doan/features/api_console/pages/api_console_page.dart';
 import 'package:mobile_app_doan/features/auth/controllers/pages/forgot_password_page.dart';
 import 'package:mobile_app_doan/features/auth/controllers/pages/reset_password_page.dart';
+import 'package:mobile_app_doan/features/misc/presentation/coming_soon_page.dart';
+import 'package:mobile_app_doan/features/settings/presentation/settings_page.dart';
 import 'package:mobile_app_doan/home/controllers/chat_controller.dart';
 import 'package:mobile_app_doan/home/controllers/notification_controller.dart';
 import 'package:mobile_app_doan/home/controllers/order_controller.dart';
@@ -123,6 +127,14 @@ class MyApp extends StatelessWidget {
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Mobile App',
+      theme: AppTheme.light(),
+      scrollBehavior: const MaterialScrollBehavior().copyWith(
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
+      ),
+      defaultTransition: Transition.cupertino,
+      transitionDuration: AppMotion.routeTransition,
       initialRoute: initial,
       getPages: [
         GetPage(name: '/auth', page: () => const Auth_Screen()),
@@ -142,6 +154,21 @@ class MyApp extends StatelessWidget {
         GetPage(
           name: '/reset-password',
           page: () => const ResetPasswordPage(),
+        ),
+        GetPage(name: '/settings', page: () => const SettingsPage()),
+        GetPage(
+          name: '/request-history',
+          page: () => const ComingSoonPage(
+            title: 'Lịch sử yêu cầu',
+            subtitle: 'Danh sách yêu cầu đã đăng sẽ hiển thị tại đây khi API sẵn sàng.',
+          ),
+        ),
+        GetPage(
+          name: '/favorite-workers',
+          page: () => const ComingSoonPage(
+            title: 'Thợ yêu thích',
+            subtitle: 'Lưu thợ tin cậy để liên hệ nhanh — đang kết nối backend.',
+          ),
         ),
       ],
     );

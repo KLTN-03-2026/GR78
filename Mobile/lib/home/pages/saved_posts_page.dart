@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:mobile_app_doan/core/theme/app_spacing.dart';
+import 'package:mobile_app_doan/core/widgets/app_empty_state.dart';
+import 'package:mobile_app_doan/core/widgets/app_error_state.dart';
+import 'package:mobile_app_doan/core/widgets/app_list_skeleton.dart';
 import 'package:mobile_app_doan/home/controllers/user_controller.dart';
 import 'package:mobile_app_doan/home/repo/backend_rest_repository.dart';
 import 'package:openapi/openapi.dart';
@@ -75,7 +79,9 @@ class _SavedPostsPageState extends State<SavedPostsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
+      backgroundColor: scheme.surfaceContainerLowest,
       appBar: AppBar(
         title: const Text('Bài đã lưu'),
         actions: [
@@ -87,28 +93,39 @@ class _SavedPostsPageState extends State<SavedPostsPage> {
       ),
       body: Obx(() {
         if (_loading.value && _items.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
+          return const AppListSkeleton(itemCount: 4);
         }
         if (_error.value.isNotEmpty && _items.isEmpty) {
-          return Padding(
-            padding: const EdgeInsets.all(24),
-            child: Center(child: Text(_error.value, textAlign: TextAlign.center)),
+          return AppErrorState(
+            message: _error.value,
+            onRetry: () => _load(),
           );
         }
         if (_items.isEmpty) {
-          return const Center(child: Text('Chưa có bài đã lưu'));
+          return AppEmptyState(
+            title: 'Chưa có bài đã lưu',
+            subtitle: 'Lưu bài đăng từ tab Trang chủ để xem lại tại đây.',
+            icon: Icons.bookmark_border,
+            actionLabel: 'Làm mới',
+            onAction: () => _load(),
+          );
         }
         return RefreshIndicator(
           onRefresh: () => _load(),
           child: ListView.separated(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(AppSpacing.sm),
             itemCount: _items.length + (_nextCursor != null ? 1 : 0),
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.xs),
             itemBuilder: (context, i) {
               if (i >= _items.length) {
-                return TextButton(
-                  onPressed: () => _load(append: true),
-                  child: const Text('Tải thêm'),
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                  child: Center(
+                    child: FilledButton.tonal(
+                      onPressed: () => _load(append: true),
+                      child: const Text('Tải thêm'),
+                    ),
+                  ),
                 );
               }
               final row = _items[i];
