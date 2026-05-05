@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getPublicApiBaseV1 } from '@/lib/server/public-api-base'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_DOMAIN || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'
+const API_BASE_URL = getPublicApiBaseV1()
 
 // GET /api/chat/search - Tìm kiếm tin nhắn
 export async function GET(request: NextRequest) {
@@ -15,19 +16,20 @@ export async function GET(request: NextRequest) {
     }
 
     const searchParams = request.nextUrl.searchParams
-    const query = searchParams.get('query')
+    // Keep backward compatibility with old clients using `query`.
+    const keyword = searchParams.get('keyword') || searchParams.get('query')
     const limit = searchParams.get('limit') || '20'
 
-    if (!query) {
+    if (!keyword) {
       return NextResponse.json(
-        { message: 'Query parameter is required' },
+        { message: 'Keyword parameter is required' },
         { status: 400 }
       )
     }
 
-    console.log('🔔 [Search Messages] Calling backend API...', query)
+    console.log('🔔 [Search Messages] Calling backend API...', keyword)
 
-    const response = await fetch(`${API_BASE_URL}/chat/search?query=${encodeURIComponent(query)}&limit=${limit}`, {
+    const response = await fetch(`${API_BASE_URL}/chat/search?keyword=${encodeURIComponent(keyword)}&limit=${limit}`, {
       method: 'GET',
       headers: {
         'Authorization': authHeader,

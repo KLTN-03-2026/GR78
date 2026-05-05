@@ -3,6 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:mobile_app_doan/core/widgets/app_empty_state.dart';
+import 'package:mobile_app_doan/core/widgets/app_error_state.dart';
+import 'package:mobile_app_doan/core/widgets/app_list_skeleton.dart';
+import 'package:mobile_app_doan/core/widgets/app_page_header.dart';
 import 'package:mobile_app_doan/home/controllers/notification_controller.dart';
 import 'package:mobile_app_doan/home/utils/parse_api_list.dart';
 
@@ -56,62 +60,50 @@ class _NotificationTabState extends State<NotificationTab>
   Widget build(BuildContext context) {
     final notif = Get.find<NotificationController>();
 
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: scheme.surfaceContainerLowest,
       body: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 48, 16, 16),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.teal, Colors.tealAccent],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
+          AppPageHeader(
+            title: 'Thông báo',
+            trailing: [
+              PopupMenuButton<String>(
+                icon: const Icon(LucideIcons.moreVertical, color: Colors.white),
+                onSelected: (v) {
+                  if (v == 'all') notif.markAllAsRead();
+                  if (v == 'clear') notif.clearRead();
+                  if (v == 'refresh') notif.refreshAll();
+                },
+                itemBuilder: (ctx) => const [
+                  PopupMenuItem(value: 'refresh', child: Text('Làm mới')),
+                  PopupMenuItem(
+                    value: 'all',
+                    child: Text('Đánh dấu tất cả đã đọc'),
+                  ),
+                  PopupMenuItem(
+                    value: 'clear',
+                    child: Text('Xóa thông báo đã đọc'),
+                  ),
+                ],
               ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Obx(() {
-                  final n = notif.unreadCount.value;
-                  return Text(
-                    n > 0 ? 'Thông báo ($n chưa đọc)' : 'Thông báo',
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  );
-                }),
-                PopupMenuButton<String>(
-                  icon: const Icon(LucideIcons.moreVertical, color: Colors.white),
-                  onSelected: (v) {
-                    if (v == 'all') notif.markAllAsRead();
-                    if (v == 'clear') notif.clearRead();
-                    if (v == 'refresh') notif.refreshAll();
-                  },
-                  itemBuilder: (ctx) => const [
-                    PopupMenuItem(value: 'refresh', child: Text('Làm mới')),
-                    PopupMenuItem(
-                      value: 'all',
-                      child: Text('Đánh dấu tất cả đã đọc'),
-                    ),
-                    PopupMenuItem(
-                      value: 'clear',
-                      child: Text('Xóa thông báo đã đọc'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+            ],
+            bottom: Obx(() {
+              final n = notif.unreadCount.value;
+              if (n <= 0) return const SizedBox.shrink();
+              return Text(
+                '$n chưa đọc',
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
+              );
+            }),
           ),
-          Container(
-            color: Colors.teal,
+          Material(
+            color: scheme.primary,
             child: TabBar(
               controller: _tabController,
-              labelColor: Colors.white,
-              unselectedLabelColor: Colors.white70,
-              indicatorColor: Colors.white,
+              labelColor: scheme.onPrimary,
+              unselectedLabelColor: scheme.onPrimary.withValues(alpha: 0.75),
+              indicatorColor: scheme.onPrimary,
               indicatorWeight: 3,
               tabs: const [
                 Tab(text: 'Tất cả'),
@@ -135,36 +127,25 @@ class _NotificationTabState extends State<NotificationTab>
 
   Widget _buildList(NotificationController c, {required bool unreadOnly}) {
     return Obx(() {
+      final scheme = Theme.of(context).colorScheme;
       final source = unreadOnly
           ? c.items.where((e) => !_isRead(e)).toList()
           : c.items.toList();
 
       if (c.isLoading.value && c.items.isEmpty) {
-        return const Center(child: CircularProgressIndicator());
+        return const AppListSkeleton(itemCount: 4);
       }
       if (c.errorMessage.value.isNotEmpty && c.items.isEmpty) {
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(c.errorMessage.value, textAlign: TextAlign.center),
-                const SizedBox(height: 16),
-                FilledButton(
-                  onPressed: () => c.refreshAll(),
-                  child: const Text('Thử lại'),
-                ),
-              ],
-            ),
-          ),
+        return AppErrorState(
+          message: c.errorMessage.value,
+          onRetry: c.refreshAll,
         );
       }
       if (source.isEmpty) {
-        return Center(
-          child: Text(
-            unreadOnly ? 'Không có thông báo chưa đọc' : 'Không có thông báo',
-          ),
+        return AppEmptyState(
+          title: unreadOnly ? 'Không có thông báo chưa đọc' : 'Không có thông báo',
+          subtitle: 'Khi có hoạt động mới, thông báo sẽ xuất hiện tại đây.',
+          icon: Icons.notifications_off_outlined,
         );
       }
 
@@ -186,8 +167,11 @@ class _NotificationTabState extends State<NotificationTab>
               background: Container(
                 alignment: Alignment.centerRight,
                 padding: const EdgeInsets.only(right: 20),
-                color: Colors.red,
-                child: const Icon(Icons.delete, color: Colors.white),
+                color: Theme.of(context).colorScheme.error,
+                child: Icon(
+                  Icons.delete,
+                  color: Theme.of(context).colorScheme.onError,
+                ),
               ),
               onDismissed: (_) {
                 if (id.isNotEmpty) c.remove(id);
@@ -198,18 +182,19 @@ class _NotificationTabState extends State<NotificationTab>
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: ListTile(
-                  tileColor: read ? null : Colors.teal.withValues(alpha: 0.06),
+                  tileColor: read ? null : scheme.primary.withValues(alpha: 0.06),
                   leading: CircleAvatar(
-                    backgroundColor:
-                        read ? Colors.grey[200] : Colors.teal.withValues(alpha: 0.2),
+                    backgroundColor: read
+                        ? scheme.surfaceContainerHighest
+                        : scheme.primaryContainer,
                     child: Icon(
                       read ? LucideIcons.bell : LucideIcons.bellRing,
-                      color: read ? Colors.grey : Colors.teal,
+                      color: read ? scheme.onSurfaceVariant : scheme.primary,
                     ),
                   ),
                   title: Text(
                     title,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: Theme.of(context).textTheme.titleSmall,
                   ),
                   subtitle:
                       body.isEmpty ? null : Text(body, maxLines: 3, overflow: TextOverflow.ellipsis),

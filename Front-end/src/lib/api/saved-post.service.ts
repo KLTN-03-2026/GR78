@@ -55,12 +55,23 @@ class SavedPostService {
   }
 
   async savePost(postId: string): Promise<void> {
-    const response = await fetch(`/api/saved-posts/${postId}`, {
+    let response = await fetch(`/api/saved-posts/${postId}`, {
       method: 'POST',
       headers: getAuthHeaders(),
     })
 
-    const data = await response.json().catch(() => ({}))
+    let data = await response.json().catch(() => ({}))
+
+    // Some deployed backends expose POST /saved-posts (with body) instead of POST /saved-posts/:postId.
+    if (!response.ok && (data?.message || '').includes('Cannot POST /api/v1/saved-posts/')) {
+      response = await fetch('/api/saved-posts', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ postId }),
+      })
+      data = await response.json().catch(() => ({}))
+    }
+
     if (!response.ok) {
       throw new Error(data.message || data.error || 'Không thể lưu bài đăng')
     }

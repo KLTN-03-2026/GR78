@@ -19,83 +19,78 @@ class MobileHomeScreen extends StatefulWidget {
 
 class _MobileHomeScreenState extends State<MobileHomeScreen> {
   int currentIndex = 0;
+  late final List<Widget> _pages;
 
-  final List<Widget> pages = [
-    const HomeTab(),
-    const SearchTab(),
-    const MessageTab(),
-    const NotificationTab(),
-    const CustomerProfileTab(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      HomeTab(onOpenTab: _selectTab),
+      const SearchTab(),
+      const MessageTab(),
+      const NotificationTab(),
+      const CustomerProfileTab(),
+    ];
+  }
+
+  void _selectTab(int index) {
+    final controllerPost = Get.find<PostController>();
+    switch (index) {
+      case 0:
+        controllerPost.loadFeed();
+        setState(() => currentIndex = index);
+        break;
+      case 1:
+        setState(() => currentIndex = index);
+        break;
+      case 2:
+        setState(() => currentIndex = index);
+        if (Get.isRegistered<ChatController>()) {
+          Get.find<ChatController>().loadConversations();
+        }
+        break;
+      case 3:
+        setState(() => currentIndex = index);
+        if (Get.isRegistered<NotificationController>()) {
+          Get.find<NotificationController>().refreshAll();
+        }
+        break;
+      case 4:
+        setState(() => currentIndex = index);
+        controllerPost.loadMyPosts();
+        break;
+      default:
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(index: currentIndex, children: pages),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: currentIndex,
-        selectedItemColor: Colors.teal,
-        unselectedItemColor: Colors.grey,
-        type: BottomNavigationBarType.fixed,
-        onTap: (index) {
-          final controllerPost = Get.find<PostController>();
-          switch (index) {
-            case 0:
-              controllerPost.loadFeed();
-              setState(() {
-                currentIndex = index;
-              });
-              break;
-            case 1:
-              setState(() {
-                currentIndex = index;
-              });
-              break;
-            case 2:
-              setState(() {
-                currentIndex = index;
-              });
-              if (Get.isRegistered<ChatController>()) {
-                Get.find<ChatController>().loadConversations();
-              }
-              break;
-            case 3:
-              setState(() {
-                currentIndex = index;
-              });
-              if (Get.isRegistered<NotificationController>()) {
-                Get.find<NotificationController>().refreshAll();
-              }
-              break;
-            case 4:
-              setState(() {
-                currentIndex = index;
-              });
-              controllerPost.loadMyPosts();
-              break;
-            default:
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(
+      body: IndexedStack(index: currentIndex, children: _pages),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: currentIndex,
+        onDestinationSelected: _selectTab,
+        destinations: const [
+          NavigationDestination(
             icon: Icon(LucideIcons.home),
-            label: "Trang chủ",
+            label: 'Trang chủ',
           ),
-          BottomNavigationBarItem(
+          NavigationDestination(
             icon: Icon(LucideIcons.search),
-            label: "Tìm kiếm",
+            label: 'Tìm kiếm',
           ),
-          BottomNavigationBarItem(
+          NavigationDestination(
             icon: Icon(LucideIcons.messageSquare),
-            label: "Tin nhắn",
+            label: 'Tin nhắn',
           ),
-          BottomNavigationBarItem(
+          NavigationDestination(
             icon: Icon(LucideIcons.bell),
-            label: "Thông báo",
+            label: 'Thông báo',
           ),
-          BottomNavigationBarItem(
+          NavigationDestination(
             icon: Icon(LucideIcons.user),
-            label: "Cá nhân",
+            label: 'Cá nhân',
           ),
         ],
       ),

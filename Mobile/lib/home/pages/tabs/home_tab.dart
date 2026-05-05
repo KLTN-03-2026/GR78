@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:mobile_app_doan/core/theme/app_spacing.dart';
+import 'package:mobile_app_doan/core/widgets/app_empty_state.dart';
+import 'package:mobile_app_doan/core/widgets/app_error_state.dart';
+import 'package:mobile_app_doan/core/widgets/app_list_skeleton.dart';
 import 'package:mobile_app_doan/home/controllers/post_controller.dart';
 import 'package:mobile_app_doan/home/controllers/quote_controller.dart';
 import 'package:mobile_app_doan/home/widgets/article.dart';
@@ -10,7 +14,10 @@ import 'package:mobile_app_doan/home/widgets/dialog/create_quote_dialog.dart';
 import 'package:openapi/openapi.dart';
 
 class HomeTab extends StatefulWidget {
-  const HomeTab({super.key});
+  const HomeTab({super.key, this.onOpenTab});
+
+  /// Jump to main shell tab (e.g. messages = 2, notifications = 3).
+  final ValueChanged<int>? onOpenTab;
 
   @override
   State<HomeTab> createState() => _HomeTabState();
@@ -63,12 +70,12 @@ class _HomeTabState extends State<HomeTab> {
     Get.snackbar(
       title,
       message,
-      backgroundColor: color.withValues(alpha: 0.15),
+      backgroundColor: color.withValues(alpha: 0.18),
       colorText: color,
       snackPosition: SnackPosition.BOTTOM,
       duration: const Duration(seconds: 2),
       margin: const EdgeInsets.all(12),
-      borderRadius: 8,
+      borderRadius: 12,
     );
   }
 
@@ -174,9 +181,10 @@ class _HomeTabState extends State<HomeTab> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: Colors.grey[50],
+      backgroundColor: scheme.surfaceContainerLowest,
       endDrawer: const CustomDrawer(),
       body: SafeArea(
         child: Stack(
@@ -185,12 +193,12 @@ class _HomeTabState extends State<HomeTab> {
               children: [
                 // ✅ HEADER
                 Container(
-                  color: Colors.white,
+                  color: scheme.surface,
                   child: Column(
                     children: [
                       Padding(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
+                          horizontal: AppSpacing.sm,
                           vertical: 10,
                         ),
                         child: Row(
@@ -202,8 +210,8 @@ class _HomeTabState extends State<HomeTab> {
                                   width: 40,
                                   height: 40,
                                   decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      colors: [Colors.teal, Colors.tealAccent],
+                                    gradient: LinearGradient(
+                                      colors: [scheme.primary, scheme.secondary],
                                     ),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -218,13 +226,10 @@ class _HomeTabState extends State<HomeTab> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                const Text(
-                                  "Thợ Tốt",
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                const SizedBox(width: AppSpacing.xs),
+                                Text(
+                                  'Thợ Tốt',
+                                  style: Theme.of(context).textTheme.titleLarge,
                                 ),
                               ],
                             ),
@@ -232,11 +237,11 @@ class _HomeTabState extends State<HomeTab> {
                               children: [
                                 IconButton(
                                   icon: const Icon(LucideIcons.bell),
-                                  onPressed: () {},
+                                  onPressed: () => widget.onOpenTab?.call(3),
                                 ),
                                 IconButton(
                                   icon: const Icon(LucideIcons.messageSquare),
-                                  onPressed: () {},
+                                  onPressed: () => widget.onOpenTab?.call(2),
                                 ),
                                 IconButton(
                                   icon: Icon(
@@ -251,18 +256,16 @@ class _HomeTabState extends State<HomeTab> {
                       ),
                       Padding(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
+                          horizontal: AppSpacing.sm,
+                          vertical: AppSpacing.xs,
                         ),
                         child: TextField(
                           decoration: InputDecoration(
-                            prefixIcon: const Icon(LucideIcons.search),
-                            hintText: "Tìm kiếm yêu cầu, thợ...",
+                            prefixIcon: Icon(LucideIcons.search, color: scheme.onSurfaceVariant),
+                            hintText: 'Tìm kiếm yêu cầu, thợ...',
                             filled: true,
-                            fillColor: Colors.grey[200],
-                            contentPadding: const EdgeInsets.symmetric(
-                              vertical: 10,
-                            ),
+                            fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 10),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(30),
                               borderSide: BorderSide.none,
@@ -274,31 +277,20 @@ class _HomeTabState extends State<HomeTab> {
                         height: 45,
                         child: ListView.builder(
                           scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.only(left: 16),
+                          padding: const EdgeInsets.only(left: AppSpacing.sm),
                           itemCount: categories.length + 1,
                           itemBuilder: (context, index) {
                             if (index == 0) {
-                              final isSelected = selectedCategory == "Tất cả";
-                              return GestureDetector(
-                                onTap: () {
-                                  setState(() => selectedCategory = "Tất cả");
-                                },
-                                child: Container(
-                                  margin: const EdgeInsets.only(right: 8),
-                                  child: Chip(
-                                    backgroundColor: isSelected
-                                        ? Colors.teal
-                                        : Colors.grey[200],
-                                    label: Text(
-                                      "Tất cả",
-                                      style: TextStyle(
-                                        color: isSelected
-                                            ? Colors.white
-                                            : Colors.black87,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
+                              final isSelected = selectedCategory == 'Tất cả';
+                              return Padding(
+                                padding: const EdgeInsets.only(right: AppSpacing.xs),
+                                child: FilterChip(
+                                  showCheckmark: false,
+                                  selected: isSelected,
+                                  label: const Text('Tất cả'),
+                                  onSelected: (_) {
+                                    setState(() => selectedCategory = 'Tất cả');
+                                  },
                                 ),
                               );
                             }
@@ -306,28 +298,15 @@ class _HomeTabState extends State<HomeTab> {
                             final cat = categories[index - 1];
                             final isSelected = selectedCategory == cat['name'];
 
-                            return GestureDetector(
-                              onTap: () {
-                                setState(() => selectedCategory = cat['name']!);
-                              },
-                              child: Container(
-                                margin: const EdgeInsets.only(right: 8),
-                                child: Chip(
-                                  backgroundColor: isSelected
-                                      ? Colors.teal
-                                      : Colors.grey[200],
-                                  label: Text(
-                                    "${cat['icon']} ${cat['name']}",
-                                    style: TextStyle(
-                                      color: isSelected
-                                          ? Colors.white
-                                          : Colors.black87,
-                                      fontWeight: isSelected
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
-                                    ),
-                                  ),
-                                ),
+                            return Padding(
+                              padding: const EdgeInsets.only(right: AppSpacing.xs),
+                              child: FilterChip(
+                                showCheckmark: false,
+                                selected: isSelected,
+                                label: Text('${cat['icon']} ${cat['name']}'),
+                                onSelected: (_) {
+                                  setState(() => selectedCategory = cat['name']!);
+                                },
                               ),
                             );
                           },
@@ -348,38 +327,26 @@ class _HomeTabState extends State<HomeTab> {
                     // -----------------------------
                     if (controller.isLoading.value &&
                         controller.posts.isEmpty) {
-                      return const Center(child: CircularProgressIndicator());
+                      return const AppListSkeleton(itemCount: 5);
                     }
 
                     // -----------------------------
                     // 2. Không có bài hoặc lỗi
                     // -----------------------------
                     if (controller.posts.isEmpty) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              LucideIcons.alertCircle,
-                              size: 48,
-                              color: Colors.red,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              controller.errorMessage.value.isEmpty
-                                  ? "Không có bài viết"
-                                  : controller.errorMessage.value,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                            const SizedBox(height: 16),
-                            ElevatedButton.icon(
-                              onPressed: controller.refreshFeed,
-                              icon: const Icon(Icons.refresh),
-                              label: const Text("Thử lại"),
-                            ),
-                          ],
-                        ),
+                      final err = controller.errorMessage.value;
+                      if (err.isNotEmpty) {
+                        return AppErrorState(
+                          message: err,
+                          onRetry: controller.refreshFeed,
+                        );
+                      }
+                      return AppEmptyState(
+                        title: 'Chưa có bài viết',
+                        subtitle: 'Kéo xuống để làm mới hoặc đăng bài mới.',
+                        icon: LucideIcons.inbox,
+                        actionLabel: 'Làm mới',
+                        onAction: controller.refreshFeed,
                       );
                     }
 
@@ -395,22 +362,11 @@ class _HomeTabState extends State<HomeTab> {
                           }).toList();
 
                     if (filteredPosts.isEmpty) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              LucideIcons.inbox,
-                              size: 48,
-                              color: Colors.grey[400],
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              "Không có bài đăng danh mục '$selectedCategory'",
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
+                      return AppEmptyState(
+                        title: 'Không có bài phù hợp',
+                        subtitle:
+                            "Không có bài đăng cho danh mục '$selectedCategory'.",
+                        icon: Icons.category_outlined,
                       );
                     }
 
@@ -497,10 +453,9 @@ class _HomeTabState extends State<HomeTab> {
               ],
             ),
             Positioned(
-              bottom: 80,
-              right: 16,
+              bottom: 88,
+              right: AppSpacing.sm,
               child: FloatingActionButton(
-                backgroundColor: Colors.teal,
                 onPressed: () {
                   CreatePostDialog.show(
                     context,
@@ -509,9 +464,9 @@ class _HomeTabState extends State<HomeTab> {
                       final success = await postController.createPost(data);
                       if (success && context.mounted) {
                         _showSnackBar(
-                          "Thành công",
-                          "Đăng bài thành công!",
-                          Colors.teal,
+                          'Thành công',
+                          'Đăng bài thành công!',
+                          Theme.of(context).colorScheme.primary,
                         );
                       }
                     },

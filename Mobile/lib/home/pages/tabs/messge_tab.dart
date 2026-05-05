@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:mobile_app_doan/core/widgets/app_empty_state.dart';
+import 'package:mobile_app_doan/core/widgets/app_error_state.dart';
+import 'package:mobile_app_doan/core/widgets/app_list_skeleton.dart';
+import 'package:mobile_app_doan/core/widgets/app_page_header.dart';
 import 'package:mobile_app_doan/home/controllers/chat_controller.dart';
 
 class MessageTab extends StatefulWidget {
@@ -55,55 +59,36 @@ class _ConversationListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
       body: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 48, 16, 16),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.teal, Color(0xFF2DD4BF)],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
+          AppPageHeader(
+            title: 'Tin nhắn',
+            trailing: [
+              IconButton(
+                onPressed: () => controller.loadConversations(),
+                icon: const Icon(Icons.refresh, color: Colors.white),
               ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Tin nhắn',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => controller.loadConversations(),
-                  icon: const Icon(Icons.refresh, color: Colors.white),
-                ),
-              ],
-            ),
+            ],
           ),
           Expanded(
             child: Obx(() {
               if (controller.isLoading.value && controller.conversations.isEmpty) {
-                return const Center(child: CircularProgressIndicator());
+                return const AppListSkeleton(itemCount: 4);
               }
               if (controller.errorMessage.value.isNotEmpty &&
                   controller.conversations.isEmpty) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text(
-                      controller.errorMessage.value,
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
+                return AppErrorState(
+                  message: controller.errorMessage.value,
+                  onRetry: controller.loadConversations,
                 );
               }
               if (controller.conversations.isEmpty) {
-                return const Center(child: Text('Chưa có cuộc trò chuyện'));
+                return const AppEmptyState(
+                  title: 'Chưa có cuộc trò chuyện',
+                  subtitle: 'Bắt đầu trò chuyện với thợ hoặc khách hàng.',
+                  icon: LucideIcons.messageSquare,
+                );
               }
               return RefreshIndicator(
                 onRefresh: () => controller.loadConversations(),
@@ -118,11 +103,12 @@ class _ConversationListView extends StatelessWidget {
                     return ListTile(
                       onTap: id.isEmpty ? null : () => controller.openConversation(id),
                       leading: CircleAvatar(
-                        backgroundColor: Colors.teal.shade100,
+                        backgroundColor:
+                            Theme.of(context).colorScheme.primaryContainer,
                         child: Text(
                           title.isNotEmpty ? title[0].toUpperCase() : '?',
-                          style: const TextStyle(
-                            color: Colors.teal,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onPrimaryContainer,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -143,13 +129,13 @@ class _ConversationListView extends StatelessWidget {
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.teal,
+                                color: Theme.of(context).colorScheme.primary,
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
                                 '$unread',
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onPrimary,
                                   fontSize: 12,
                                 ),
                               ),
@@ -183,15 +169,13 @@ class _ChatDetailView extends StatelessWidget {
         : controller.titleFor(controller.selectedConversation!);
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0.5,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => controller.backToList(),
         ),
-        title: Text(title, style: const TextStyle(color: Colors.black87)),
+        title: Text(title),
         actions: [
           PopupMenuButton<String>(
             onSelected: (v) {
@@ -229,13 +213,17 @@ class _ChatDetailView extends StatelessWidget {
                         maxWidth: MediaQuery.sizeOf(context).width * 0.78,
                       ),
                       decoration: BoxDecoration(
-                        color: isMe ? Colors.teal : Colors.white,
+                        color: isMe
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Text(
                         body,
                         style: TextStyle(
-                          color: isMe ? Colors.white : Colors.black87,
+                          color: isMe
+                              ? Theme.of(context).colorScheme.onPrimary
+                              : Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                     ),
@@ -255,7 +243,10 @@ class _ChatDetailView extends StatelessWidget {
                       decoration: InputDecoration(
                         hintText: 'Nhập tin nhắn...',
                         filled: true,
-                        fillColor: Colors.grey[200],
+                        fillColor: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest
+                            .withValues(alpha: 0.6),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
                           borderSide: BorderSide.none,

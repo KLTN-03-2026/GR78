@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:mobile_app_doan/core/theme/app_spacing.dart';
 import 'package:mobile_app_doan/features/auth/controllers/auth_controller.dart';
 
 class CustomDrawer extends StatelessWidget {
@@ -7,10 +8,15 @@ class CustomDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Drawer(
+      backgroundColor: scheme.surface,
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.xs,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -39,16 +45,15 @@ class CustomDrawer extends StatelessWidget {
                 return Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
+                    color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Row(
                     children: [
-                      const CircleAvatar(
+                      CircleAvatar(
                         radius: 24,
-                        backgroundColor: Colors.teal,
-                        child:
-                            Icon(Icons.person, color: Colors.white, size: 28),
+                        backgroundColor: scheme.primary,
+                        child: Icon(Icons.person, color: scheme.onPrimary, size: 28),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -64,7 +69,7 @@ class CustomDrawer extends StatelessWidget {
                               auth.userEmail.value.isEmpty
                                   ? 'Xem trang cá nhân'
                                   : auth.userEmail.value,
-                              style: const TextStyle(color: Colors.grey),
+                              style: TextStyle(color: scheme.onSurfaceVariant),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -91,12 +96,15 @@ class CustomDrawer extends StatelessWidget {
               }),
               _drawerItem(Icons.history, 'Lịch sử yêu cầu', () {
                 Navigator.pop(context);
+                Get.toNamed<void>('/request-history');
               }),
               _drawerItem(Icons.favorite_border, 'Thợ yêu thích', () {
                 Navigator.pop(context);
+                Get.toNamed<void>('/favorite-workers');
               }),
               _drawerItem(Icons.settings_outlined, 'Cài đặt', () {
                 Navigator.pop(context);
+                Get.toNamed<void>('/settings');
               }),
               _drawerItem(Icons.api, 'API Console', () {
                 Navigator.pop(context);
@@ -200,7 +208,7 @@ class CustomDrawer extends StatelessWidget {
 
   Widget _drawerItem(IconData icon, String text, VoidCallback onTap) {
     return ListTile(
-      leading: Icon(icon, color: Colors.black54),
+      leading: Icon(icon),
       title: Text(text, style: const TextStyle(fontWeight: FontWeight.w500)),
       onTap: onTap,
     );

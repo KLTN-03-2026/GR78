@@ -6,6 +6,7 @@ import { chatService } from '@/lib/api/chat.service'
 import { ProfileService } from '@/lib/api/profile.service'
 import { chatSocketService } from '@/lib/api/chat-socket.service'
 import { useRouter } from 'next/navigation'
+import { resolveMediaUrl as normalizeImageUrl } from '@/lib/media-url'
 
 interface QuoteSectionProps {
   postId: string
@@ -47,20 +48,30 @@ export default function QuoteSection({ postId, isPostOwner }: QuoteSectionProps)
 
       const enhancedQuotes = await Promise.all(
         data.map(async (quote) => {
+          const quoteData = quote as any
           let providerName = quote.providerName || 'Thợ'
-          let providerAvatar: string | undefined = quote.providerAvatar || undefined
+          let providerAvatar: string | undefined =
+            normalizeImageUrl(
+              quote.providerAvatar ||
+              quoteData.providerAvatarUrl ||
+              quoteData.avatar ||
+              quoteData.avatarUrl ||
+              quoteData.provider?.avatar ||
+              quoteData.provider?.avatarUrl
+            ) || undefined
 
           if (quote.providerId) {
             try {
               const profile = await ProfileService.getUserProfile(quote.providerId)
-              providerName = profile.displayName || profile.fullName || providerName
-              providerAvatar = profile.avatar || providerAvatar
+              const profileData = profile as any
+              providerName = profileData.displayName || profileData.fullName || providerName
+              providerAvatar = normalizeImageUrl(profileData.avatarUrl || profileData.avatar || providerAvatar) || providerAvatar
 
               if (!providerAvatar && typeof window !== 'undefined') {
                 const avatarKey = `user_avatar_${quote.providerId}`
                 const savedAvatar = localStorage.getItem(avatarKey)
                 if (savedAvatar) {
-                  providerAvatar = savedAvatar
+                  providerAvatar = normalizeImageUrl(savedAvatar) || undefined
                 }
               }
             } catch (error) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_app_doan/core/theme/app_motion.dart';
 import 'package:mobile_app_doan/features/auth/controllers/pages/login_page.dart';
 import 'package:mobile_app_doan/features/auth/controllers/pages/register_page.dart';
 import 'package:mobile_app_doan/features/auth/controllers/pages/start_page.dart';
@@ -48,9 +49,19 @@ class _Auth_ScreenState extends State<Auth_Screen> {
 
     return Scaffold(
       body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        transitionBuilder: (child, animation) =>
-            FadeTransition(opacity: animation, child: child),
+        duration: AppMotion.authSwitcher,
+        switchInCurve: AppMotion.emphasized,
+        switchOutCurve: AppMotion.decelerate,
+        transitionBuilder: (child, animation) {
+          final offset = Tween<Offset>(
+            begin: const Offset(0.02, 0),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: animation, curve: AppMotion.emphasized));
+          return FadeTransition(
+            opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+            child: SlideTransition(position: offset, child: child),
+          );
+        },
         child: currentPage,
       ),
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:mobile_app_doan/core/widgets/app_page_header.dart';
 
 class HeaderApp extends StatelessWidget {
   final String title;
@@ -17,50 +18,29 @@ class HeaderApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 48, 16, 16),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.teal, Colors.tealAccent],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
+    final scheme = Theme.of(context).colorScheme;
+    return AppPageHeader(
+      title: title,
+      trailing: [
+        if (onMorePressed != null)
+          IconButton(
+            onPressed: onMorePressed,
+            icon: const Icon(LucideIcons.moreVertical, color: Colors.white),
+          ),
+      ],
+      bottom: TextField(
+        onChanged: onSearch,
+        decoration: InputDecoration(
+          hintText: searchHint,
+          filled: true,
+          fillColor: scheme.surface,
+          prefixIcon: Icon(Icons.search, color: scheme.onSurfaceVariant),
+          contentPadding: const EdgeInsets.symmetric(vertical: 0),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(30),
+            borderSide: BorderSide.none,
+          ),
         ),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              IconButton(
-                onPressed: onMorePressed,
-                icon: const Icon(LucideIcons.moreVertical, color: Colors.white),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            onChanged: onSearch,
-            decoration: InputDecoration(
-              hintText: searchHint,
-              filled: true,
-              fillColor: Colors.white,
-              prefixIcon: const Icon(Icons.search, color: Colors.grey),
-              contentPadding: const EdgeInsets.symmetric(vertical: 0),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(30),
-                borderSide: BorderSide.none,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

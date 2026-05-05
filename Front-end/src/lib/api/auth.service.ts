@@ -25,8 +25,90 @@ export interface AuthResponse {
   }
 }
 
+export interface ForgotPasswordRequest {
+  identifier?: string
+  email?: string
+  phone?: string
+}
+
+export interface ResetForgotPasswordRequest {
+  token: string
+  newPassword: string
+  confirmPassword: string
+}
+
 // Auth Service sử dụng SDK
 export class AuthService {
+  private static isHandlingTokenExpired = false
+
+  static async forgotPassword(data: ForgotPasswordRequest): Promise<{ message: string }> {
+    const normalizedIdentifier =
+      data.identifier?.trim() || data.email?.trim() || data.phone?.trim() || ''
+
+    if (!normalizedIdentifier) {
+      throw new Error('Vui lòng nhập email hoặc số điện thoại')
+    }
+
+    const payload: ForgotPasswordRequest = {
+      identifier: normalizedIdentifier,
+    }
+
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedIdentifier)) {
+      payload.email = normalizedIdentifier
+    }
+
+    if (/^0\d{9,10}$/.test(normalizedIdentifier)) {
+      payload.phone = normalizedIdentifier
+    }
+
+    const response = await fetch('/api/auth/forgot-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    })
+
+    const responseText = await response.text()
+    let responseData: any = {}
+
+    try {
+      responseData = responseText ? JSON.parse(responseText) : {}
+    } catch {
+      throw new Error('Phản hồi không hợp lệ từ máy chủ')
+    }
+
+    if (!response.ok || responseData?.success === false) {
+      throw new Error(responseData?.message || 'Không thể gửi yêu cầu quên mật khẩu')
+    }
+
+    return {
+      message: responseData?.message || 'Yêu cầu đặt lại mật khẩu đã được gửi',
+    }
+  }
+
+  static async resetForgotPassword(data: ResetForgotPasswordRequest): Promise<void> {
+    const response = await fetch('/api/auth/reset-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    })
+
+    const responseText = await response.text()
+    let responseData: any = {}
+
+    try {
+      responseData = responseText ? JSON.parse(responseText) : {}
+    } catch {
+      throw new Error('Phản hồi không hợp lệ từ máy chủ')
+    }
+
+    if (!response.ok || responseData?.success === false) {
+      throw new Error(responseData?.message || 'Không thể đặt lại mật khẩu')
+    }
+  }
 
   // Lưu thông tin đăng nhập để tự động đăng nhập lần sau
   static saveRememberMe(identifier: string, password: string) {
@@ -83,7 +165,18 @@ export class AuthService {
         body: JSON.stringify(data),
       })
 
-      const responseData = await response.json()
+      // Đọc body một lần duy nhất dưới dạng text
+      const responseText = await response.text()
+      let responseData
+
+      // Cố gắng parse như JSON
+      try {
+        responseData = JSON.parse(responseText)
+      } catch (parseError) {
+        console.error('❌ Phản hồi không phải JSON, status:', response.status)
+        console.error('📄 Nội dung:', responseText.substring(0, 200))
+        throw new Error('Backend trả về lỗi: ' + responseText.substring(0, 100))
+      }
       
       console.log('✅ Login Response Status:', response.status)
       console.log('✅ Login Response Data:', responseData)
@@ -255,16 +348,37 @@ export class AuthService {
 
   // Xử lý token hết hạn - tự động redirect về trang đăng nhập
   static handleTokenExpired(): void {
-    if (typeof window !== 'undefined') {
-      // Xóa token cũ
-      localStorage.removeItem(TOKEN_KEYS.ACCESS_TOKEN)
-      localStorage.removeItem(TOKEN_KEYS.REFRESH_TOKEN)
-      
-      // Hiển thị thông báo
+    if (typeof window === 'undefined') return
+
+    // Tránh nhiều request 401 gọi alert/redirect chồng lên nhau
+    if (this.isHandlingTokenExpired) return
+    this.isHandlingTokenExpired = true
+
+    // Xóa token cũ (bao gồm cả key legacy để tránh vòng lặp auth)
+    localStorage.removeItem(TOKEN_KEYS.ACCESS_TOKEN)
+    localStorage.removeItem(TOKEN_KEYS.REFRESH_TOKEN)
+    localStorage.removeItem('accessToken')
+    localStorage.removeItem('refreshToken')
+
+    // Chỉ hiện 1 alert cho mỗi phiên xử lý
+    const sessionNoticeKey = 'auth_expired_notice_shown'
+    const hasShownNotice = sessionStorage.getItem(sessionNoticeKey) === '1'
+
+    if (!hasShownNotice) {
+      sessionStorage.setItem(sessionNoticeKey, '1')
       alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!')
-      
-      // Chuyển hướng về trang đăng nhập
-      window.location.href = '/dang-nhap'
+    }
+
+    const loginPath = '/dang-nhap'
+    if (window.location.pathname !== loginPath) {
+      window.location.replace(loginPath)
+
+      // Fallback trong trường hợp trình duyệt chặn replace ở một số tình huống hiếm
+      setTimeout(() => {
+        if (window.location.pathname !== loginPath) {
+          window.location.assign(loginPath)
+        }
+      }, 150)
     }
   }
 }

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_app_doan/core/theme/app_radii.dart';
+import 'package:mobile_app_doan/core/theme/app_spacing.dart';
 
 class InputField extends StatelessWidget {
   final String label;
@@ -7,29 +9,33 @@ class InputField extends StatelessWidget {
   final TextInputType? keyboardType;
   final ValueChanged<String>? onChanged;
   final TextEditingController? controller;
-  final String? errorText; // ✅ Thêm để hiển thị lỗi
+  final String? errorText;
 
   const InputField({
-    Key? key,
+    super.key,
     required this.label,
     required this.hint,
     required this.icon,
     this.keyboardType,
     this.onChanged,
     this.controller,
-    this.errorText, // ✅ Thêm parameter
-  }) : super(key: key);
+    this.errorText,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final hasError = errorText != null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+          style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpacing.xxs),
         TextField(
           controller: controller,
           onChanged: onChanged,
@@ -37,57 +43,28 @@ class InputField extends StatelessWidget {
           decoration: InputDecoration(
             prefixIcon: Icon(
               icon,
-              color: errorText != null ? Colors.red : Colors.grey,
+              color: hasError ? scheme.error : scheme.onSurfaceVariant,
             ),
             hintText: hint,
-            filled: true,
-            fillColor: Colors.grey.shade50,
-
-            // ✅ Hiển thị error text
             errorText: errorText,
             errorMaxLines: 2,
-            errorStyle: const TextStyle(fontSize: 12, height: 1.2),
-
-            // ✅ Border bình thường
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(20),
-              borderSide: BorderSide(color: Colors.grey.shade300),
-            ),
-
-            // ✅ Border khi enabled (không có lỗi)
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.lg)),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(AppRadii.lg),
               borderSide: BorderSide(
-                color: errorText != null
-                    ? Colors.red.shade300
-                    : Colors.grey.shade300,
-                width: errorText != null ? 1.5 : 1,
+                color: hasError ? scheme.error.withValues(alpha: 0.5) : scheme.outlineVariant,
               ),
             ),
-
-            // ✅ Border khi focus
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(AppRadii.lg),
               borderSide: BorderSide(
-                color: errorText != null ? Colors.red : Colors.teal,
+                color: hasError ? scheme.error : scheme.primary,
                 width: 2,
               ),
             ),
-
-            // ✅ Border khi có lỗi
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(20),
-              borderSide: const BorderSide(color: Colors.red, width: 1.5),
-            ),
-
-            // ✅ Border khi focus và có lỗi
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(20),
-              borderSide: const BorderSide(color: Colors.red, width: 2),
-            ),
           ),
         ),
-        const SizedBox(height: 16), // ✅ Spacing giữa các field
+        const SizedBox(height: AppSpacing.sm),
       ],
     );
   }

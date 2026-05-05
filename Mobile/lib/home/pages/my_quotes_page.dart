@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:mobile_app_doan/core/theme/app_spacing.dart';
+import 'package:mobile_app_doan/core/widgets/app_empty_state.dart';
+import 'package:mobile_app_doan/core/widgets/app_error_state.dart';
+import 'package:mobile_app_doan/core/widgets/app_list_skeleton.dart';
 import 'package:mobile_app_doan/home/controllers/order_controller.dart';
 import 'package:mobile_app_doan/home/controllers/quote_controller.dart';
 import 'package:mobile_app_doan/home/utils/parse_api_list.dart';
@@ -38,8 +42,10 @@ class _MyQuotesPageState extends State<MyQuotesPage> {
   @override
   Widget build(BuildContext context) {
     final qc = Get.find<QuoteController>();
+    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
+      backgroundColor: scheme.surfaceContainerLowest,
       appBar: AppBar(
         title: const Text('Báo giá đã gửi'),
         actions: [
@@ -51,22 +57,28 @@ class _MyQuotesPageState extends State<MyQuotesPage> {
       ),
       body: Obx(() {
         if (qc.isLoading.value && qc.myQuotes.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
+          return const AppListSkeleton(itemCount: 4);
         }
         if (qc.myQuotes.isEmpty) {
-          return Center(
-            child: Text(
-              qc.errorMessage.value.isEmpty
-                  ? 'Chưa có báo giá'
-                  : qc.errorMessage.value,
-              textAlign: TextAlign.center,
-            ),
+          final err = qc.errorMessage.value;
+          if (err.isNotEmpty) {
+            return AppErrorState(
+              message: err,
+              onRetry: () => qc.loadMyQuotes(),
+            );
+          }
+          return AppEmptyState(
+            title: 'Chưa có báo giá',
+            subtitle: 'Gửi báo giá từ bài đăng trên trang chủ.',
+            icon: Icons.request_quote_outlined,
+            actionLabel: 'Làm mới',
+            onAction: () => qc.loadMyQuotes(),
           );
         }
         return ListView.separated(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(AppSpacing.sm),
           itemCount: qc.myQuotes.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 8),
+          separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.xs),
           itemBuilder: (context, i) {
             final q = qc.myQuotes[i];
             final id = _quoteId(q);

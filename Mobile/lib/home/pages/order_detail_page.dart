@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:mobile_app_doan/core/widgets/app_error_state.dart';
+import 'package:mobile_app_doan/core/widgets/app_list_skeleton.dart';
 import 'package:mobile_app_doan/home/controllers/order_controller.dart';
 import 'package:mobile_app_doan/home/controllers/user_controller.dart';
 
@@ -55,13 +57,16 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     if (_loading) {
       return Scaffold(
         appBar: AppBar(title: const Text('Chi tiết đơn')),
-        body: const Center(child: CircularProgressIndicator()),
+        body: const AppListSkeleton(itemCount: 3),
       );
     }
     if (_order == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Chi tiết đơn')),
-        body: const Center(child: Text('Không tải được đơn hàng')),
+        body: AppErrorState(
+          message: 'Không tải được đơn hàng',
+          onRetry: _load,
+        ),
       );
     }
 
