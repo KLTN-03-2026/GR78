@@ -165,17 +165,22 @@ export class QuoteStatusService {
 
         const rejectionReason = 'Khách hàng đã chọn thợ khác';
 
+        if (otherQuotes.length === 0) return;
+
+        const rejectedAt = new Date();
         for (const quote of otherQuotes) {
             quote.status = QuoteStatus.REJECTED;
-            quote.rejectedAt = new Date();
+            quote.rejectedAt = rejectedAt;
             quote.rejectionReason = rejectionReason;
-            await this.quoteRepo.save(quote);
-
-            await this.notificationService.notifyQuoteRejected(
-                quote,
-                rejectionReason,
-            );
         }
+
+        await Promise.all(otherQuotes.map(quote => this.quoteRepo.save(quote)));
+
+        await Promise.allSettled(
+            otherQuotes.map(quote =>
+                this.notificationService.notifyQuoteRejected(quote, rejectionReason),
+            ),
+        );
 
         this.logger.log(`Rejected ${otherQuotes.length} other quotes for post ${postId}`);
     }

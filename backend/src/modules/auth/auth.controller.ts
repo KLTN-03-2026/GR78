@@ -34,23 +34,23 @@ import { DeviceId } from './decorators/device-id.decorator';
 import { LoginResponseDto, RegisterResponseDto, TokenResponseDto } from './dtos/auth-response.dto';
 import { LoginDto, LoginMobileDto, RefreshTokenDto, RegisterDto } from './dtos/auth.dto';
 import {
-    ForgotPasswordDto,
-    ForgotPasswordResponseDto,
-    ResetPasswordDto,
-    ResetPasswordResponseDto,
-} from './dtos/password-reset.dto';
-import {
     ForgotPasswordOtpDto,
     OtpSuccessResponseDto,
     ResendVerificationDto,
     ResetPasswordOtpDto,
     VerifyEmailDto,
 } from './dtos/otp.dto';
+import {
+    ForgotPasswordDto,
+    ForgotPasswordResponseDto,
+    ResetPasswordDto,
+    ResetPasswordResponseDto,
+} from './dtos/password-reset.dto';
 import { DeviceIdValidationPipe } from './pipes/device-id-validation.pipe';
 import { AuthResponseBuilder } from './services/auth-response-builder.service';
 import { CookieService } from './services/cookie.service';
-import { PasswordResetService } from './services/password-reset.service';
 import { OtpService } from './services/otp.service';
+import { PasswordResetService } from './services/password-reset.service';
 
 
 @Controller('auth')
@@ -106,7 +106,7 @@ export class AuthController {
         const result = await this.authService.register(bodyRegister);
 
         // Fire-and-forget: send verification OTP after successful registration
-        void this.otpService.sendVerificationOtp(result.id, result.email!, ip ?? null);
+        // void this.otpService.sendVerificationOtp(result.id, result.email!, ip ?? null);
 
         return this.responseBuilder.buildRegisterResponse(result);
     }

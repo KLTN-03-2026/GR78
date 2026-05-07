@@ -44,9 +44,20 @@ export class SubscriptionRepository {
 
     async findByUserIdWithLock(userId: string, manager: EntityManager): Promise<Subscription | null> {
         try {
+            // Acquire row-level lock without joins: PostgreSQL forbids FOR UPDATE
+            // on the nullable side of an outer join (plan and discount are nullable).
+            const locked = await manager
+                .createQueryBuilder(Subscription, 'sub')
+                .setLock('pessimistic_write')
+                .where('sub.userId = :userId', { userId })
+                .orderBy('sub.createdAt', 'DESC')
+                .getOne();
+
+            if (!locked) return null;
+
+            // Load relations within the same transaction (lock already held above).
             return await manager.getRepository(Subscription).findOne({
-                where: { userId },
-                lock: { mode: 'pessimistic_write' },
+                where: { id: locked.id },
                 relations: ['plan', 'discount'],
             });
         } catch (error) {

@@ -1,5 +1,5 @@
-import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { CurrentUserId } from '@/common/decorators/current-user-id.decorator';
+import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { Roles } from '@/common/decorators/roles.decorator';
 import { UserRole } from '@/common/enums/user-role.enum';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
@@ -76,7 +76,7 @@ export class OrderController {
     @ApiResponse({ status: 404, description: 'Quote not found' })
     async confirmOrderFromQuote(
         @Param('quoteId') quoteId: string,
-        @CurrentUser('id') providerId: string,
+        @CurrentUserId('id') providerId: string,
     ) {
         return await this.orderService.createOrderFromQuoteConfirmation(quoteId, providerId);
     }
@@ -97,7 +97,7 @@ export class OrderController {
     @ApiResponse({ status: 404, description: 'Order not found' })
     async providerDeclineOrder(
         @Param('id') orderId: string,
-        @CurrentUser('id') providerId: string,
+        @CurrentUserId('id') providerId: string,
         @Body() dto: CancelOrderDto,
     ) {
         return await this.orderService.providerDeclineOrder(orderId, providerId, dto);
@@ -110,7 +110,7 @@ export class OrderController {
     @ApiResponse({ status: 200, description: 'Success' })
     async providerComplete(
         @Param('id') orderId: string,
-        @CurrentUser('id') providerId: string,
+        @CurrentUserId('id') providerId: string,
     ) {
         return await this.orderService.providerCompleteOrder(orderId, providerId);
     }
@@ -127,7 +127,7 @@ export class OrderController {
     @ApiResponse({ status: 200, description: 'Success' })
     async customerComplete(
         @Param('id') orderId: string,
-        @CurrentUser('id') customerId: string,
+        @CurrentUserId('id') customerId: string,
     ) {
         return await this.orderService.customerCompleteOrder(orderId, customerId);
     }
@@ -138,7 +138,7 @@ export class OrderController {
     @ApiOperation({ summary: 'Lấy danh sách đơn hàng của tôi' })
     @ApiResponse({ status: 200, description: 'Success' })
     async getMyOrders(
-        @CurrentUser('id') userId: string,
+        @CurrentUserId('id') userId: string,
         @Query() query: GetOrdersQueryDto,
     ) {
         return await this.orderService.getUserOrders(userId, query.status);
@@ -147,7 +147,7 @@ export class OrderController {
     @Get('stats')
     @ApiOperation({ summary: 'Thống kê đơn hàng' })
     @ApiResponse({ status: 200, description: 'Success' })
-    async getOrderStats(@CurrentUser('id') userId: string) {
+    async getOrderStats(@CurrentUserId('id') userId: string) {
         return await this.orderService.getOrderStats(userId);
     }
 
@@ -183,7 +183,7 @@ export class OrderController {
         },
     })
     async getOrdersAwaitingConfirmation(
-        @CurrentUser('id') providerId: string,
+        @CurrentUserId('id') providerId: string,
         @Query() query: PendingConfirmationQueryDto,
     ) {
         return await this.orderService.getOrdersAwaitingProviderConfirmation(
@@ -198,7 +198,7 @@ export class OrderController {
     @ApiResponse({ status: 200, description: 'Success' })
     async getOrder(
         @Param('id') orderId: string,
-        @CurrentUser('id') userId: string,
+        @CurrentUserId('id') userId: string,
     ) {
         return await this.orderService.getOrderById(orderId, userId);
     }
@@ -208,7 +208,7 @@ export class OrderController {
     @ApiResponse({ status: 200, description: 'Success' })
     async getOrderByNumber(
         @Param('orderNumber') orderNumber: string,
-        @CurrentUser('id') userId: string,
+        @CurrentUserId('id') userId: string,
     ) {
         return await this.orderService.getOrderByNumber(orderNumber, userId);
     }
@@ -223,7 +223,7 @@ export class OrderController {
     @ApiResponse({ status: 400, description: 'Cannot cancel after 10 minutes' })
     async cancelOrder(
         @Param('id') orderId: string,
-        @CurrentUser('id') userId: string,
+        @CurrentUserId('id') userId: string,
         @Body() dto: CancelOrderDto,
     ) {
         return await this.orderService.cancelOrder(orderId, userId, dto);
