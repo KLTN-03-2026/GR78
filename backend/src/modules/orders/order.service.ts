@@ -29,11 +29,11 @@ export class OrderService {
         private readonly quoteRepo: Repository<Quote>,
         @InjectRepository(PostCustomer)
         private readonly postRepo: Repository<PostCustomer>,
-        private readonly notificationService: NotificationEventService, 
+        private readonly notificationService: NotificationEventService,
         private readonly chatService: ChatService,
         private readonly quoteStatusService: QuoteStatusService,
         private readonly quoteRevisionService: QuoteRevisionService,
-        private readonly dataSource: DataSource, 
+        private readonly dataSource: DataSource,
     ) { }
 
     /**
@@ -47,15 +47,23 @@ export class OrderService {
         customerId: string,
     ): Promise<Order> {
         return await this.dataSource.transaction(async (manager) => {
+            // Acquire a row-level lock without joins: PostgreSQL forbids FOR UPDATE
+            // on the nullable side of an outer join.
+            const quoteLock = await manager
+                .createQueryBuilder(Quote, 'quote')
+                .setLock('pessimistic_write')
+                .where('quote.id = :id', { id: quoteId })
+                .getOne();
+
+            if (!quoteLock) {
+                throw new NotFoundException('Quote not found');
+            }
+
+            // Load full relations within the same transaction (lock already held above).
             const quote = await manager.findOne(Quote, {
                 where: { id: quoteId },
                 relations: ['post', 'post.customer', 'provider', 'customRequest'],
-                lock: { mode: 'pessimistic_write' },
-            });
-
-            if (!quote) {
-                throw new NotFoundException('Quote not found');
-            }
+            }) as Quote;
 
             if (quote.status !== QuoteStatus.PENDING) {
                 throw new BadRequestException(
@@ -137,12 +145,16 @@ export class OrderService {
             return saved;
         }).then(async (saved) => {
             // Fire notifications after the transaction commits (best-effort)
-            await this.notificationService.notifyOrderAwaitingConfirmation(
-                saved.providerId,
-                saved.customerId,
-                saved.id,
-                saved.title,
-            );
+            try {
+                await this.notificationService.notifyOrderAwaitingConfirmation(
+                    saved.providerId,
+                    saved.customerId,
+                    saved.id,
+                    saved.title,
+                );
+            } catch (err) {
+                this.logger.warn(`Failed to notify order awaiting confirmation ${saved.id}: ${err}`);
+            }
             return saved;
         });
     }
@@ -163,15 +175,23 @@ export class OrderService {
         let postCleanupPayload: { postId: string; quoteId: string; post: PostCustomer } | null = null;
 
         const order = await this.dataSource.transaction(async (manager) => {
+            // Acquire a row-level lock without joins: PostgreSQL forbids FOR UPDATE
+            // on the nullable side of an outer join.
+            const quoteLock = await manager
+                .createQueryBuilder(Quote, 'quote')
+                .setLock('pessimistic_write')
+                .where('quote.id = :id', { id: quoteId })
+                .getOne();
+
+            if (!quoteLock) {
+                throw new NotFoundException('Quote not found');
+            }
+
+            // Load full relations within the same transaction (lock already held above).
             const quote = await manager.findOne(Quote, {
                 where: { id: quoteId },
                 relations: ['post', 'post.customer', 'provider', 'revisions', 'customRequest'],
-                lock: { mode: 'pessimistic_write' },
-            });
-
-            if (!quote) {
-                throw new NotFoundException('Quote not found');
-            }
+            }) as Quote;
 
             if (quote.status !== QuoteStatus.ORDER_REQUESTED) {
                 throw new BadRequestException(
@@ -342,8 +362,8 @@ export class OrderService {
 
         try {
             await this.chatService.createDirectConversation(customerId, dto.providerId);
-        } catch{
-            this.logger.warn(`Failed to create conversation for order ${saved.id}:`);
+        } catch (err) {
+            this.logger.warn(`Failed to create conversation for order ${saved.id}: ${err}`);
         }
 
         await this.notificationService.notifyOrderCreated(
@@ -357,11 +377,11 @@ export class OrderService {
         return saved;
     }
 
-    
+
     async startOrder(orderId: string, providerId: string): Promise<Order> {
         const order = await this.orderRepo.findOne({
             where: { id: orderId },
-            relations: ['quote'], 
+            relations: ['quote'],
         });
 
         if (!order) {
@@ -397,7 +417,7 @@ export class OrderService {
         return saved;
     }
 
-    
+
     async providerCompleteOrder(
         orderId: string,
         providerId: string,
@@ -434,7 +454,7 @@ export class OrderService {
         return saved;
     }
 
-    
+
     async customerCompleteOrder(
         orderId: string,
         customerId: string,
@@ -484,8 +504,8 @@ export class OrderService {
                 saved.providerId,
                 saved.title,
             );
-        } catch {
-            this.logger.warn(`Failed to create post-order conversation for order ${orderId}`);
+        } catch (err) {
+            this.logger.warn(`Failed to create post-order conversation for order ${orderId}: ${err}`);
         }
 
         this.logger.log(`Order completed: ${orderId}`);
@@ -551,12 +571,16 @@ export class OrderService {
             this.logger.log(`Order ${orderId} declined by provider ${providerId}`);
             return cancelled;
         }).then(async (cancelled) => {
-            await this.notificationService.notifyProviderDeclinedOrder(
-                cancelled.customerId,
-                cancelled.id,
-                cancelled.title,
-                dto.reason,
-            );
+            try {
+                await this.notificationService.notifyProviderDeclinedOrder(
+                    cancelled.customerId,
+                    cancelled.id,
+                    cancelled.title,
+                    dto.reason,
+                );
+            } catch (err) {
+                this.logger.warn(`Failed to notify provider declined order ${cancelled.id}: ${err}`);
+            }
             return cancelled;
         });
     }
@@ -616,13 +640,17 @@ export class OrderService {
             this.logger.log(`Order ${orderId} cancelled by ${userId}`);
             return saved;
         }).then(async (saved) => {
-            const otherUserId = userId === saved.customerId ? saved.providerId : saved.customerId;
-            await this.notificationService.notifyOrderCancelled(
-                otherUserId,
-                saved.id,
-                saved.title,
-                dto.reason ?? 'No reason provided',
-            );
+            try {
+                const otherUserId = userId === saved.customerId ? saved.providerId : saved.customerId;
+                await this.notificationService.notifyOrderCancelled(
+                    otherUserId,
+                    saved.id,
+                    saved.title,
+                    dto.reason ?? 'No reason provided',
+                );
+            } catch (err) {
+                this.logger.warn(`Failed to notify order cancelled ${saved.id}: ${err}`);
+            }
             return saved;
         });
     }

@@ -32,46 +32,46 @@ export class OtpService {
      * Called right after user registration — fire-and-forget.
      * Errors are swallowed so they never fail the registration response.
      */
-    async sendVerificationOtp(
-        userId: string,
-        email: string,
-        ipAddress: string | null,
-    ): Promise<void> {
-        try {
-            const latest = await this.otpRepo.findLatestActiveByUserId(
-                userId,
-                OtpPurpose.EMAIL_VERIFICATION,
-            );
-            if (latest && this.isWithinCooldown(latest.createdAt)) {
-                return; // silently skip — auto-send after register, cooldown not an error
-            }
+    // async sendVerificationOtp(
+    //     userId: string,
+    //     email: string,
+    //     ipAddress: string | null,
+    // ): Promise<void> {
+    //     try {
+    //         const latest = await this.otpRepo.findLatestActiveByUserId(
+    //             userId,
+    //             OtpPurpose.EMAIL_VERIFICATION,
+    //         );
+    //         if (latest && this.isWithinCooldown(latest.createdAt)) {
+    //             return; // silently skip — auto-send after register, cooldown not an error
+    //         }
 
-            await this.otpRepo.invalidateAllActiveForUser(userId, OtpPurpose.EMAIL_VERIFICATION);
-            const { rawOtp, otpHash } = this.generateOtp();
-            const expiresAt = new Date(Date.now() + OTP_CONSTANTS.EXPIRE_MINUTES * 60 * 1000);
+    //         await this.otpRepo.invalidateAllActiveForUser(userId, OtpPurpose.EMAIL_VERIFICATION);
+    //         const { rawOtp, otpHash } = this.generateOtp();
+    //         const expiresAt = new Date(Date.now() + OTP_CONSTANTS.EXPIRE_MINUTES * 60 * 1000);
 
-            await this.otpRepo.create({
-                userId,
-                email,
-                purpose: OtpPurpose.EMAIL_VERIFICATION,
-                otpHash,
-                expiresAt,
-                ipAddress,
-            });
+    //         await this.otpRepo.create({
+    //             userId,
+    //             email,
+    //             purpose: OtpPurpose.EMAIL_VERIFICATION,
+    //             otpHash,
+    //             expiresAt,
+    //             ipAddress,
+    //         });
 
-            void this.mailService.sendVerificationOtpEmail({
-                toEmail: email,
-                otp: rawOtp,
-                expiresInMinutes: OTP_CONSTANTS.EXPIRE_MINUTES,
-            });
+    //         void this.mailService.sendVerificationOtpEmail({
+    //             toEmail: email,
+    //             otp: rawOtp,
+    //             expiresInMinutes: OTP_CONSTANTS.EXPIRE_MINUTES,
+    //         });
 
-            this.logger.log(`Verification OTP sent to userId=${userId}`);
-        } catch (err) {
-            this.logger.error(
-                `sendVerificationOtp failed for userId=${userId}: ${ErrorUtil.getMessage(err)}`,
-            );
-        }
-    }
+    //         this.logger.log(`Verification OTP sent to userId=${userId}`);
+    //     } catch (err) {
+    //         this.logger.error(
+    //             `sendVerificationOtp failed for userId=${userId}: ${ErrorUtil.getMessage(err)}`,
+    //         );
+    //     }
+    // }
 
     /**
      * POST /auth/resend-verification

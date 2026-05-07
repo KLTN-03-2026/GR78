@@ -76,8 +76,8 @@ export class ReviewService {
                 saved.rating,
                 customerName,
             );
-        } catch {
-            this.logger.error(`Failed to send review notification for review ${saved.id}`);
+        } catch (err) {
+            this.logger.error(`Failed to send review notification for review ${saved.id}: ${err}`);
         }
 
         this.logger.log(`Review created: ${saved.id} for order ${dto.orderId}`);
@@ -119,8 +119,8 @@ export class ReviewService {
                 saved.id,
                 providerName,
             );
-        } catch {
-            this.logger.error(`Failed to send reply notification for review ${reviewId}`);
+        } catch (err) {
+            this.logger.error(`Failed to send reply notification for review ${reviewId}: ${err}`);
         }
 
         this.logger.log(`Provider reply added to review ${reviewId}`);
