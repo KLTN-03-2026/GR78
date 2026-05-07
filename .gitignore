@@ -1,0 +1,25 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Dependencies
+node_modules/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Build outputs
+dist/
+build/
+.dart_tool/
+.packages
+
+# Environment
+.env
+.env.local
