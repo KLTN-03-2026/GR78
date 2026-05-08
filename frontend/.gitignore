@@ -1,3 +1,14 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
 # dependencies
 /node_modules
 /.pnp
@@ -13,8 +24,9 @@
 # production
 /build
 
+dist/
+
 # misc
-.DS_Store
 *.pem
 
 # debug
@@ -24,6 +36,8 @@ yarn-error.log*
 
 # local env files
 .env*.local
+.env
+.env.local
 
 # vercel
 .vercel
@@ -34,3 +48,9 @@ next-env.d.ts
 
 # swagger temp file
 swagger.json
+
+# Flutter
+.flutter-plugins
+.flutter-plugins-dependencies
+.dart_tool/
+.packages
