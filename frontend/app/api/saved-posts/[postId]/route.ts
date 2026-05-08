@@ -3,6 +3,8 @@ import { getPublicApiBaseV1 } from '@/lib/server/public-api-base'
 
 const API_BASE_URL = getPublicApiBaseV1()
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { postId: string } }

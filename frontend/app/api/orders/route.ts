@@ -7,6 +7,8 @@ const API_BASE_URL = getPublicApiBaseV1()
  * GET /api/orders
  * Lấy danh sách đơn hàng của tôi
  */
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     console.log('📦 [API Route] GET /api/orders called')

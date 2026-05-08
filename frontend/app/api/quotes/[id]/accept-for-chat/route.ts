@@ -7,6 +7,8 @@ const API_BASE_URL = getPublicApiBaseV1()
  * POST /api/quotes/{id}/accept-for-chat
  * [Customer] Chấp nhận quote để mở chat
  */
+export const dynamic = 'force-dynamic'
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }

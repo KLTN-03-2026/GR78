@@ -44,6 +44,8 @@ const API_BASE_URL = getDomainUrl()
  *   }
  * }
  */
+export const dynamic = 'force-dynamic'
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }

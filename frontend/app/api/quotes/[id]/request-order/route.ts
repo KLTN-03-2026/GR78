@@ -7,6 +7,8 @@ const API_BASE_URL = getPublicApiBaseV1()
  * POST /api/quotes/{id}/request-order
  * [Customer] Nhấn đặt đơn với revision cụ thể
  */
+export const dynamic = 'force-dynamic'
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }

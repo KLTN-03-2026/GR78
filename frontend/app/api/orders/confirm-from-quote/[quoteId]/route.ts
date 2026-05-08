@@ -7,6 +7,8 @@ const API_BASE_URL = getPublicApiBaseV1()
  * POST /api/orders/confirm-from-quote/{quoteId}
  * [Provider] Xác nhận làm → Tạo order
  */
+export const dynamic = 'force-dynamic'
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { quoteId: string } }
