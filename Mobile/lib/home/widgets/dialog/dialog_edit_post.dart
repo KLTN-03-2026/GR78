@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:mobile_app_doan/core/api_error_message.dart';
+import 'package:mobile_app_doan/core/theme/app_colors.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile_app_doan/home/controllers/post_controller.dart';
 import 'package:openapi/openapi.dart';
@@ -8,7 +10,7 @@ import 'package:built_collection/built_collection.dart';
 class UpdatePostDialog extends StatefulWidget {
   final PostResponseDto post;
 
-  const UpdatePostDialog({Key? key, required this.post}) : super(key: key);
+  const UpdatePostDialog({super.key, required this.post});
 
   @override
   State<UpdatePostDialog> createState() => _CreatePostDialogState();
@@ -134,81 +136,58 @@ class _CreatePostDialogState extends State<UpdatePostDialog> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Success Icon
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0D9488).withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.check_circle,
-                  color: Color(0xFF0D9488),
-                  size: 50,
-                ),
-              ),
-              const SizedBox(height: 20),
-              
-              // Success Message
-              const Text(
-                'Chỉnh sửa thành công!',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0D9488),
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Bài viết của bạn đã được cập nhật thành công.',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              
-              // OK Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context); // Đóng dialog thành công
-                    Navigator.pop(context); // Đóng dialog chỉnh sửa
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0D9488),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'OK',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+      builder: (ctx) {
+        final scheme = Theme.of(ctx).colorScheme;
+        final p = scheme.primary;
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-        ),
-      ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: p.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.check_circle, color: p, size: 50),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Chỉnh sửa thành công!',
+                  style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                        color: p,
+                        fontWeight: FontWeight.bold,
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Bài viết của bạn đã được cập nhật thành công.',
+                  style: Theme.of(ctx).textTheme.bodyMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.pop(context);
+                    },
+                    child: const Text('OK'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -245,10 +224,12 @@ class _CreatePostDialogState extends State<UpdatePostDialog> {
           // Hiển thị dialog thành công (trên dialog chỉnh sửa)
           _showSuccessDialog();
         } else if (mounted) {
-          // Hiển thị lỗi nếu có
+          final msg = postController.errorMessage.value.trim().isNotEmpty
+              ? postController.errorMessage.value
+              : 'Vui lòng thử lại sau ít phút.';
           Get.snackbar(
             "Không thể cập nhật",
-            "Vui lòng thử lại sau ít phút.",
+            msg,
             backgroundColor: Colors.red.shade50,
             colorText: Colors.redAccent,
             snackPosition: SnackPosition.BOTTOM,
@@ -259,7 +240,7 @@ class _CreatePostDialogState extends State<UpdatePostDialog> {
         if (mounted) {
           Get.snackbar(
             "Lỗi",
-            e.toString(),
+            describeApiError(e),
             backgroundColor: Colors.red.shade50,
             colorText: Colors.redAccent,
             snackPosition: SnackPosition.BOTTOM,
@@ -272,6 +253,8 @@ class _CreatePostDialogState extends State<UpdatePostDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final p = scheme.primary;
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
@@ -282,11 +265,7 @@ class _CreatePostDialogState extends State<UpdatePostDialog> {
             // Header
             Container(
               decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF0D9488), Color(0xFF06B6D4)],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
+                gradient: AppColors.brandGradientHorizontal,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
               ),
               padding: const EdgeInsets.all(20),
@@ -328,8 +307,8 @@ class _CreatePostDialogState extends State<UpdatePostDialog> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF0D9488),
+                          borderSide: BorderSide(
+                            color: p,
                             width: 2,
                           ),
                         ),
@@ -355,8 +334,8 @@ class _CreatePostDialogState extends State<UpdatePostDialog> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF0D9488),
+                          borderSide: BorderSide(
+                            color: p,
                             width: 2,
                           ),
                         ),
@@ -373,9 +352,9 @@ class _CreatePostDialogState extends State<UpdatePostDialog> {
                     // Image URLs
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.image,
-                          color: Color(0xFF0D9488),
+                          color: p,
                           size: 20,
                         ),
                         const SizedBox(width: 8),
@@ -393,7 +372,7 @@ class _CreatePostDialogState extends State<UpdatePostDialog> {
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           border: Border.all(
-                            color: const Color(0xFF0D9488).withValues(
+                            color: p.withValues(
                               alpha: 0.5,
                             ),
                             width: 2,
@@ -401,10 +380,10 @@ class _CreatePostDialogState extends State<UpdatePostDialog> {
                           ),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Center(
+                        child: Center(
                           child: Text(
                             '+ Thêm URL hình ảnh',
-                            style: TextStyle(color: Color(0xFF0D9488)),
+                            style: TextStyle(color: p),
                           ),
                         ),
                       ),
@@ -418,7 +397,7 @@ class _CreatePostDialogState extends State<UpdatePostDialog> {
                           margin: const EdgeInsets.only(bottom: 8),
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF0D9488).withValues(
+                            color: p.withValues(
                               alpha: 0.1,
                             ),
                             borderRadius: BorderRadius.circular(8),
@@ -435,7 +414,7 @@ class _CreatePostDialogState extends State<UpdatePostDialog> {
                                   errorBuilder: (_, __, ___) => Container(
                                     width: 48,
                                     height: 48,
-                                    color: Colors.grey[300],
+                                    color: scheme.surfaceContainerHighest,
                                     child: const Icon(Icons.broken_image),
                                   ),
                                 ),
@@ -468,9 +447,9 @@ class _CreatePostDialogState extends State<UpdatePostDialog> {
                     // Location
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.location_on,
-                          color: Color(0xFF0D9488),
+                          color: p,
                           size: 20,
                         ),
                         const SizedBox(width: 8),
@@ -490,8 +469,8 @@ class _CreatePostDialogState extends State<UpdatePostDialog> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF0D9488),
+                          borderSide: BorderSide(
+                            color: p,
                             width: 2,
                           ),
                         ),
@@ -502,9 +481,9 @@ class _CreatePostDialogState extends State<UpdatePostDialog> {
                     // Desired Time
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.calendar_today,
-                          color: Color(0xFF0D9488),
+                          color: p,
                           size: 20,
                         ),
                         const SizedBox(width: 8),
@@ -521,7 +500,7 @@ class _CreatePostDialogState extends State<UpdatePostDialog> {
                       child: Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey),
+                          border: Border.all(color: scheme.outlineVariant),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
@@ -535,14 +514,14 @@ class _CreatePostDialogState extends State<UpdatePostDialog> {
                                     : 'Chọn ngày và giờ',
                                 style: TextStyle(
                                   color: _desiredTime != null
-                                      ? Colors.black
-                                      : Colors.grey,
+                                      ? scheme.onSurface
+                                      : scheme.onSurfaceVariant,
                                 ),
                               ),
                             ),
-                            const Icon(
+                            Icon(
                               Icons.access_time,
-                              color: Color(0xFF0D9488),
+                              color: p,
                             ),
                           ],
                         ),
@@ -553,9 +532,9 @@ class _CreatePostDialogState extends State<UpdatePostDialog> {
                     // Budget
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.attach_money,
-                          color: Color(0xFF0D9488),
+                          color: p,
                           size: 20,
                         ),
                         const SizedBox(width: 8),
@@ -576,8 +555,8 @@ class _CreatePostDialogState extends State<UpdatePostDialog> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF0D9488),
+                          borderSide: BorderSide(
+                            color: p,
                             width: 2,
                           ),
                         ),
@@ -592,7 +571,7 @@ class _CreatePostDialogState extends State<UpdatePostDialog> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: Colors.grey.shade300)),
+                border: Border(top: BorderSide(color: scheme.outlineVariant)),
               ),
               child: Row(
                 children: [
@@ -610,19 +589,15 @@ class _CreatePostDialogState extends State<UpdatePostDialog> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: ElevatedButton(
+                    child: FilledButton(
                       onPressed: _handleSubmit,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0D9488),
+                      style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: const Text(
-                        'Chỉnh sửa',
-                        style: TextStyle(color: Colors.white),
-                      ),
+                      child: const Text('Chỉnh sửa'),
                     ),
                   ),
                 ],

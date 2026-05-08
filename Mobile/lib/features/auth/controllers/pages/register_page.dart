@@ -10,6 +10,7 @@ import 'package:mobile_app_doan/features/auth/utils/validator.dart';
 import 'package:mobile_app_doan/features/auth/widgets/button.dart';
 import 'package:mobile_app_doan/features/auth/widgets/field_input.dart';
 import 'package:mobile_app_doan/features/auth/widgets/field_pass.dart';
+import 'package:mobile_app_doan/features/auth/widgets/social_button.dart';
 import 'package:openapi/openapi.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -23,6 +24,7 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
+  /// `customer` | `provider` — wire values match backend [UserRole].
   String userType = 'customer';
 
   final TextEditingController nameController = TextEditingController();
@@ -69,7 +71,8 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
 
-    final UserRole role = userType == 'worker' ? UserRole.provider : UserRole.customer;
+    final UserRole role =
+        userType == 'provider' ? UserRole.provider : UserRole.customer;
     authController.register(
       nameController.text.trim(),
       phoneController.text.replaceAll(' ', ''),
@@ -104,6 +107,7 @@ class _RegisterPageState extends State<RegisterPage> {
             children: [
               Expanded(
                 child: _buildUserTypeCard(
+                  context,
                   emoji: '👤',
                   title: 'Khách hàng',
                   subtitle: 'Tìm thợ',
@@ -114,11 +118,12 @@ class _RegisterPageState extends State<RegisterPage> {
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: _buildUserTypeCard(
+                  context,
                   emoji: '🔧',
-                  title: 'Thợ',
-                  subtitle: 'Nhận việc',
-                  selected: userType == 'worker',
-                  onTap: () => setState(() => userType = 'worker'),
+                  title: 'Thợ / Nhà cung cấp',
+                  subtitle: 'Nhận việc (provider)',
+                  selected: userType == 'provider',
+                  onTap: () => setState(() => userType = 'provider'),
                 ),
               ),
             ],
@@ -200,6 +205,8 @@ class _RegisterPageState extends State<RegisterPage> {
             }
             return PrimaryButton(text: 'Đăng ký', onPressed: handleRegister);
           }),
+          const SizedBox(height: AppSpacing.md),
+          const AuthSocialLoginSection(isLoginFlow: false),
           const SizedBox(height: AppSpacing.sm),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -213,7 +220,8 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  Widget _buildUserTypeCard({
+  Widget _buildUserTypeCard(
+    BuildContext context, {
     required String emoji,
     required String title,
     required String subtitle,
@@ -230,7 +238,7 @@ class _RegisterPageState extends State<RegisterPage> {
           padding: const EdgeInsets.all(AppSpacing.sm),
           decoration: BoxDecoration(
             border: Border.all(
-              color: selected ? AppColors.seed : Colors.grey.shade300,
+              color: selected ? AppColors.seed : Theme.of(context).colorScheme.outlineVariant,
               width: 2,
             ),
             borderRadius: BorderRadius.circular(AppRadii.lg),
@@ -240,7 +248,10 @@ class _RegisterPageState extends State<RegisterPage> {
               Text(emoji, style: const TextStyle(fontSize: 28)),
               const SizedBox(height: 6),
               Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-              Text(subtitle, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              Text(
+                subtitle,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
               if (selected) const Icon(Icons.check_circle, color: AppColors.seed),
             ],
           ),

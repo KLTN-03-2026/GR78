@@ -17,6 +17,7 @@ class ComingSoonPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

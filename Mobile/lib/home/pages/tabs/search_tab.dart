@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:mobile_app_doan/core/api_error_message.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:mobile_app_doan/home/controllers/user_controller.dart';
 import 'package:mobile_app_doan/home/repo/backend_rest_repository.dart';
+import 'package:mobile_app_doan/home/utils/profile_navigation.dart';
 import 'package:mobile_app_doan/home/widgets/header.dart';
 import 'package:mobile_app_doan/utils/network_image_url.dart';
 
@@ -68,7 +70,7 @@ class _SearchTabState extends State<SearchTab> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _globalError = e.toString();
+          _globalError = describeApiError(e);
           _globalData = null;
         });
       }
@@ -311,6 +313,7 @@ class _SearchTabState extends State<SearchTab> {
             (p) => Card(
               margin: const EdgeInsets.symmetric(vertical: 8),
               child: ListTile(
+                onTap: () => navigateToPublicProfile(p.id),
                 leading: CircleAvatar(
                   backgroundColor: scheme.primaryContainer,
                   backgroundImage: isHttpImageUrl(p.avatarUrl)
@@ -393,13 +396,21 @@ class _SearchTabState extends State<SearchTab> {
           const SizedBox(height: 8),
           const Text('Thợ', style: TextStyle(fontWeight: FontWeight.w600)),
           ...providers.map(
-            (p) => Card(
-              child: ListTile(
-                leading: const CircleAvatar(child: Icon(Icons.person)),
-                title: Text(p['displayName']?.toString() ?? 'Thợ'),
-                subtitle: Text(p['province']?.toString() ?? ''),
-              ),
-            ),
+            (p) {
+              final pid = p['id']?.toString() ??
+                  p['userId']?.toString() ??
+                  p['user_id']?.toString();
+              return Card(
+                child: ListTile(
+                  onTap: pid != null && pid.isNotEmpty
+                      ? () => navigateToPublicProfile(pid)
+                      : null,
+                  leading: const CircleAvatar(child: Icon(Icons.person)),
+                  title: Text(p['displayName']?.toString() ?? 'Thợ'),
+                  subtitle: Text(p['province']?.toString() ?? ''),
+                ),
+              );
+            },
           ),
         ],
       ],

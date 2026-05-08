@@ -6,6 +6,7 @@ import 'package:mobile_app_doan/core/widgets/app_error_state.dart';
 import 'package:mobile_app_doan/core/widgets/app_list_skeleton.dart';
 import 'package:mobile_app_doan/core/widgets/app_page_header.dart';
 import 'package:mobile_app_doan/home/controllers/chat_controller.dart';
+import 'package:mobile_app_doan/home/utils/profile_navigation.dart';
 
 class MessageTab extends StatefulWidget {
   const MessageTab({super.key});
@@ -64,6 +65,7 @@ class _ConversationListView extends StatelessWidget {
         children: [
           AppPageHeader(
             title: 'Tin nhắn',
+            showBackButton: false,
             trailing: [
               IconButton(
                 onPressed: () => controller.loadConversations(),
@@ -100,6 +102,7 @@ class _ConversationListView extends StatelessWidget {
                     final title = controller.titleFor(c);
                     final preview = controller.previewFor(c);
                     final unread = controller.unreadFor(c);
+                    final peerId = controller.peerUserId(c);
                     return ListTile(
                       onTap: id.isEmpty ? null : () => controller.openConversation(id),
                       leading: CircleAvatar(
@@ -122,8 +125,17 @@ class _ConversationListView extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      trailing: unread > 0
-                          ? Container(
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (peerId != null && peerId.isNotEmpty)
+                            IconButton(
+                              tooltip: 'Xem hồ sơ',
+                              icon: const Icon(Icons.person_outline, size: 22),
+                              onPressed: () => navigateToPublicProfile(peerId),
+                            ),
+                          if (unread > 0)
+                            Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
                                 vertical: 4,
@@ -135,12 +147,14 @@ class _ConversationListView extends StatelessWidget {
                               child: Text(
                                 '$unread',
                                 style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onPrimary,
+                                  color:
+                                      Theme.of(context).colorScheme.onPrimary,
                                   fontSize: 12,
                                 ),
                               ),
-                            )
-                          : null,
+                            ),
+                        ],
+                      ),
                     );
                   },
                 ),

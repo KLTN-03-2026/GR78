@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile_app_doan/core/theme/app_spacing.dart';
 import 'package:mobile_app_doan/core/widgets/app_page_header.dart';
+import 'package:mobile_app_doan/core/widgets/app_section_label.dart';
 import 'package:mobile_app_doan/features/auth/controllers/auth_controller.dart';
 
 /// Account preferences and app shortcuts — wired where backend exists; toggles are local UX polish.
@@ -26,6 +27,7 @@ class _SettingsPageState extends State<SettingsPage> {
         children: [
           AppPageHeader(
             title: 'Cài đặt',
+            showBackButton: false,
             trailing: [
               IconButton(
                 onPressed: () => Get.back<void>(),
@@ -37,7 +39,7 @@ class _SettingsPageState extends State<SettingsPage> {
             child: ListView(
               padding: const EdgeInsets.all(AppSpacing.sm),
               children: [
-                _sectionTitle(theme, 'Tài khoản'),
+                AppSectionLabel('Tài khoản'),
                 Obx(() {
                   final auth = Get.find<AuthController>();
                   return Card(
@@ -55,7 +57,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   );
                 }),
                 const SizedBox(height: AppSpacing.md),
-                _sectionTitle(theme, 'Thông báo'),
+                AppSectionLabel('Thông báo'),
                 Card(
                   child: Column(
                     children: [
@@ -76,7 +78,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                _sectionTitle(theme, 'Ứng dụng'),
+                AppSectionLabel('Ứng dụng'),
                 Card(
                   child: Column(
                     children: [
@@ -125,19 +127,6 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _sectionTitle(ThemeData theme, String text) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: AppSpacing.xs),
-      child: Text(
-        text,
-        style: theme.textTheme.labelLarge?.copyWith(
-          color: theme.colorScheme.primary,
-          letterSpacing: 0.2,
-        ),
       ),
     );
   }

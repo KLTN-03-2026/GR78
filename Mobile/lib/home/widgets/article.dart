@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
+import 'package:mobile_app_doan/core/theme/app_radii.dart';
+import 'package:mobile_app_doan/core/theme/app_spacing.dart';
 import 'package:mobile_app_doan/utils/network_image_url.dart';
 import 'package:openapi/openapi.dart';
 
@@ -16,6 +18,7 @@ class Article extends StatelessWidget {
   final VoidCallback? onDelete;
   final VoidCallback? onViewDetail;
   final VoidCallback? onReport;
+  final VoidCallback? onCustomerProfileTap;
   final ArticleMenuType menuType;
 
   const Article({
@@ -29,6 +32,7 @@ class Article extends StatelessWidget {
     this.onDelete,
     this.onViewDetail,
     this.onReport,
+    this.onCustomerProfileTap,
     this.menuType = ArticleMenuType.profile,
   });
 
@@ -98,42 +102,112 @@ class Article extends StatelessWidget {
 
     return RepaintBoundary(
       child: Card(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        margin: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
         clipBehavior: Clip.antiAlias,
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(AppSpacing.sm),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundColor: scheme.surfaceContainerHighest,
-                    backgroundImage:
-                        useNetworkAvatar ? NetworkImage(avatarUrl) : null,
-                    child: !useNetworkAvatar
-                        ? Icon(Icons.person, color: muted)
-                        : null,
-                  ),
-                  const SizedBox(width: 10),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          fullName,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          status.toString(),
-                          style: theme.textTheme.bodySmall?.copyWith(color: muted),
-                        ),
-                      ],
+                    child: Material(
+                      color: Colors.transparent,
+                      child: onCustomerProfileTap != null
+                          ? InkWell(
+                              onTap: onCustomerProfileTap,
+                              borderRadius:
+                                  BorderRadius.circular(AppRadii.sm),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 4,
+                                  horizontal: 2,
+                                ),
+                                child: Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 20,
+                                      backgroundColor:
+                                          scheme.surfaceContainerHighest,
+                                      backgroundImage: useNetworkAvatar
+                                          ? NetworkImage(avatarUrl)
+                                          : null,
+                                      child: !useNetworkAvatar
+                                          ? Icon(Icons.person, color: muted)
+                                          : null,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            fullName,
+                                            style: theme
+                                                .textTheme.titleSmall
+                                                ?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          Text(
+                                            status.toString(),
+                                            style: theme
+                                                .textTheme.bodySmall
+                                                ?.copyWith(color: muted),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 20,
+                                  backgroundColor:
+                                      scheme.surfaceContainerHighest,
+                                  backgroundImage: useNetworkAvatar
+                                      ? NetworkImage(avatarUrl)
+                                      : null,
+                                  child: !useNetworkAvatar
+                                      ? Icon(Icons.person, color: muted)
+                                      : null,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        fullName,
+                                        style: theme.textTheme.titleSmall
+                                            ?.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      Text(
+                                        status.toString(),
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(color: muted),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
                     ),
                   ),
                   PopupMenuButton<String>(
@@ -241,7 +315,7 @@ class Article extends StatelessWidget {
               const SizedBox(height: 10),
               if (firstImage != null)
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppRadii.md),
                   child: Image.network(
                     firstImage,
                     height: 160,
@@ -354,7 +428,7 @@ class Article extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.sm),
         splashColor: primary.withValues(alpha: 0.12),
         highlightColor: primary.withValues(alpha: 0.06),
         child: Padding(

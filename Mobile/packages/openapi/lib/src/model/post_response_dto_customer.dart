@@ -99,6 +99,14 @@ class _$PostResponseDtoCustomerSerializer implements PrimitiveSerializer<PostRes
           ) as String;
           result.id = valueDes;
           break;
+        // Backend có thể gửi customerId thay vì id trong object customer
+        case r'customerId':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.id = valueDes;
+          break;
         case r'fullName':
           final valueDes = serializers.deserialize(
             value,

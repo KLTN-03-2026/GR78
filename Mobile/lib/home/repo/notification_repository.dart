@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:mobile_app_doan/core/api_error_message.dart';
 import 'package:openapi/openapi.dart';
 
 /// Dùng [Dio] chung (có bearer) vì client sinh ra trả [Response<void>] nên không đọc được body qua kiểu tĩnh.
@@ -6,12 +7,6 @@ class NotificationRepository {
   final Dio _dio;
 
   NotificationRepository(Openapi openapi) : _dio = openapi.dio;
-
-  String _msg(DioException e) {
-    final d = e.response?.data;
-    if (d is Map && d['message'] != null) return d['message'].toString();
-    return e.message ?? 'Notification request failed';
-  }
 
   List<Map<String, dynamic>> _parseList(dynamic data) {
     if (data == null) return [];
@@ -63,7 +58,7 @@ class NotificationRepository {
       );
       return _parseList(res.data);
     } on DioException catch (e) {
-      throw Exception(_msg(e));
+      throw Exception(describeApiError(e, fallback: 'Notification request failed'));
     }
   }
 
@@ -72,7 +67,7 @@ class NotificationRepository {
       final res = await _dio.get<dynamic>('/notifications/unread-count');
       return _parseUnreadCount(res.data);
     } on DioException catch (e) {
-      throw Exception(_msg(e));
+      throw Exception(describeApiError(e, fallback: 'Notification request failed'));
     }
   }
 
@@ -80,7 +75,7 @@ class NotificationRepository {
     try {
       await _dio.post<dynamic>('/notifications/$id/read');
     } on DioException catch (e) {
-      throw Exception(_msg(e));
+      throw Exception(describeApiError(e, fallback: 'Notification request failed'));
     }
   }
 
@@ -88,7 +83,7 @@ class NotificationRepository {
     try {
       await _dio.post<dynamic>('/notifications/mark-all-read');
     } on DioException catch (e) {
-      throw Exception(_msg(e));
+      throw Exception(describeApiError(e, fallback: 'Notification request failed'));
     }
   }
 
@@ -96,7 +91,7 @@ class NotificationRepository {
     try {
       await _dio.delete<dynamic>('/notifications/$id');
     } on DioException catch (e) {
-      throw Exception(_msg(e));
+      throw Exception(describeApiError(e, fallback: 'Notification request failed'));
     }
   }
 
@@ -104,7 +99,7 @@ class NotificationRepository {
     try {
       await _dio.delete<dynamic>('/notifications/read');
     } on DioException catch (e) {
-      throw Exception(_msg(e));
+      throw Exception(describeApiError(e, fallback: 'Notification request failed'));
     }
   }
 }

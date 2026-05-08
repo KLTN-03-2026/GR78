@@ -1,4 +1,6 @@
 import 'package:get/get.dart';
+import 'package:mobile_app_doan/core/api_error_message.dart';
+import 'package:mobile_app_doan/core/deferred_login_navigation.dart';
 import 'package:mobile_app_doan/core/token_helper.dart';
 import 'package:mobile_app_doan/features/auth/repo/auth_repository.dart';
 import 'package:mobile_app_doan/features/auth/services/auth_service.dart';
@@ -26,6 +28,8 @@ class AuthController extends GetxController {
   var isLoggedIn = false.obs;
   var userName = ''.obs;
   var userEmail = ''.obs;
+  /// Cached wire role from profile: `customer` | `provider` | `admin` (matches backend JWT).
+  var userRole = ''.obs;
 
   /// -------------------------------------------
   /// 🔹 LOGIN
@@ -61,7 +65,7 @@ class AuthController extends GetxController {
       Get.snackbar("Thành công", "Đăng nhập thành công");
       Get.offAllNamed("/home");
     } catch (e) {
-      Get.snackbar("Lỗi", e.toString());
+      Get.snackbar("Lỗi", describeApiError(e));
     } finally {
       isLoading.value = false;
     }
@@ -82,7 +86,7 @@ class AuthController extends GetxController {
       Get.snackbar("Thành công", "Token đã được làm mới");
       return response;
     } catch (e) {
-      Get.snackbar("Lỗi", e.toString());
+      Get.snackbar("Lỗi", describeApiError(e));
       return null;
     } finally {
       isLoading.value = false;
@@ -120,7 +124,8 @@ class AuthController extends GetxController {
       isLoggedIn.value = false;
       userName.value = '';
       userEmail.value = '';
-      Get.offAllNamed('/login');
+      userRole.value = '';
+      scheduleOffAllToLogin();
       if (hasError) {
         Future.delayed(const Duration(milliseconds: 300), () {
           Get.snackbar('Thông báo', 'Đã đăng xuất (API logout-all có lỗi)');
@@ -157,8 +162,9 @@ class AuthController extends GetxController {
       isLoggedIn.value = false;
       userName.value = "";
       userEmail.value = "";
+      userRole.value = "";
 
-      Get.offAllNamed("/login");
+      scheduleOffAllToLogin();
 
       if (hasError) {
         Future.delayed(const Duration(milliseconds: 300), () {
@@ -179,14 +185,56 @@ class AuthController extends GetxController {
       if (user != null) {
         userName.value = user.userName ?? '';
         userEmail.value = user.userEmail ?? '';
+        userRole.value = user.userRole ?? '';
+      } else {
+        userName.value = '';
+        userEmail.value = '';
+        userRole.value = '';
       }
     }
+  }
+
+  /// Persist name/email/role from profile (same shape as after login).
+  Future<void> applyProfileToSessionCaches(ProfileResponseDto profile) async {
+    final cachedUser = UserModel(
+      userName: profile.displayName ?? profile.fullName,
+      userEmail: profile.email,
+      userPhone: profile.phone,
+      userRole: profile.role.name,
+    );
+    await authService.saveUserModel(cachedUser);
+    userName.value = cachedUser.userName ?? '';
+    userEmail.value = cachedUser.userEmail ?? '';
+    userRole.value = cachedUser.userRole ?? '';
   }
 
   Future<void> forgotPassword(String email) async {
     isLoading.value = true;
     try {
       await repository.forgotPassword(email);
+    } catch (e) {
+      rethrow;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> verifyEmail({
+    required String email,
+    required String otp,
+  }) async {
+    isLoading.value = true;
+    try {
+      await repository.verifyEmail(email: email, otp: otp);
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> resendVerification(String email) async {
+    isLoading.value = true;
+    try {
+      await repository.resendVerification(email);
     } finally {
       isLoading.value = false;
     }
@@ -199,6 +247,27 @@ class AuthController extends GetxController {
     isLoading.value = true;
     try {
       await repository.resetPassword(token: token, newPassword: newPassword);
+    } catch (e) {
+      rethrow;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> resetPasswordWithOtp({
+    required String email,
+    required String otp,
+    required String newPassword,
+  }) async {
+    isLoading.value = true;
+    try {
+      await repository.resetPasswordWithOtp(
+        email: email,
+        otp: otp,
+        newPassword: newPassword,
+      );
+    } catch (e) {
+      rethrow;
     } finally {
       isLoading.value = false;
     }
@@ -214,11 +283,17 @@ class AuthController extends GetxController {
     isLoading.value = true;
     try {
       await repository.register(name, phone, email, password, userType);
-      Get.snackbar("Thành công", "Đăng ký thành công. Vui lòng đăng nhập.");
-      Get.offAllNamed("/login");
+      Get.snackbar(
+        'Thành công',
+        'Đã gửi mã OTP tới email. Nhập mã để kích hoạt tài khoản.',
+      );
+      Get.offAllNamed(
+        '/verify-email',
+        parameters: {'email': Uri.encodeComponent(email.trim())},
+      );
     } catch (e) {
-      Get.snackbar("Lỗi", e.toString());
-      print(e.toString());
+      Get.snackbar("Lỗi", describeApiError(e));
+      print(describeApiError(e));
     } finally {
       isLoading.value = false;
     }
@@ -227,22 +302,14 @@ class AuthController extends GetxController {
   Future<void> _syncProfileFromServer() async {
     try {
       final profile = await profileRepository.getMyProfile();
-      final cachedUser = UserModel(
-        userName: profile.displayName ?? profile.fullName,
-        userEmail: profile.email,
-        userPhone: profile.phone,
-        userRole: profile.role.name,
-      );
-
-      await authService.saveUserModel(cachedUser);
-      userName.value = cachedUser.userName ?? '';
-      userEmail.value = cachedUser.userEmail ?? '';
+      await applyProfileToSessionCaches(profile);
     } catch (e) {
       print("⚠️ Không thể đồng bộ profile ngay sau đăng nhập: $e");
       final cachedUser = await authService.getUser();
       if (cachedUser != null) {
         userName.value = cachedUser.userName ?? '';
         userEmail.value = cachedUser.userEmail ?? '';
+        userRole.value = cachedUser.userRole ?? '';
       }
     }
   }

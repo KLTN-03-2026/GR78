@@ -85,6 +85,12 @@ class UserModel {
   // Kiểm tra có phải admin không
   bool get isAdmin => userRole?.toLowerCase() == 'admin';
 
+  /// Wire `customer` — matches backend [UserRole.CUSTOMER].
+  bool get isCustomer => userRole?.toLowerCase() == 'customer';
+
+  /// Wire `provider` — matches backend [UserRole.PROVIDER].
+  bool get isProvider => userRole?.toLowerCase() == 'provider';
+
   // Lấy chữ cái đầu từ tên để làm avatar
   String get initials {
     if (userName == null || userName!.isEmpty) return '?';
@@ -219,7 +225,10 @@ class ProfileWidget extends StatelessWidget {
         ),
         SizedBox(height: 8),
         Text(user.displayName, style: TextStyle(fontSize: 18)),
-        Text(user.displayEmail, style: TextStyle(color: Colors.grey)),
+        Text(
+          user.displayEmail,
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+        ),
         Text(user.displayPhone),
         
         // Badge cho admin

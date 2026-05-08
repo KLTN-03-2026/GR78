@@ -48,6 +48,8 @@ dependencies:
   json_serializable: ^6.11.1
   socket_io_client: ^3.1.2
   built_collection: ^5.1.1
+  file_picker: ^8.0.0+1
+  url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_test:

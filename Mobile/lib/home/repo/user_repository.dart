@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:mobile_app_doan/core/api_error_message.dart';
 import 'package:openapi/openapi.dart';
 
 class ProfileRepository {
@@ -6,16 +7,13 @@ class ProfileRepository {
 
   ProfileRepository(Openapi openapi) : _usersApi = openapi.getProfileApi();
 
-  String _msg(DioException e) =>
-      e.response?.data?['message']?.toString() ?? 'Profile request failed';
-
   /// Lấy profile theo token hiện tại
   Future<ProfileResponseDto> getMyProfile() async {
     try {
       final response = await _usersApi.profileControllerGetMyProfile();
       return response.data!;
     } on DioException catch (e) {
-      throw Exception(_msg(e));
+      throw Exception(describeApiError(e, fallback: 'Profile request failed'));
     }
   }
 
@@ -26,7 +24,7 @@ class ProfileRepository {
       );
       return response.data!;
     } on DioException catch (e) {
-      throw Exception(_msg(e));
+      throw Exception(describeApiError(e, fallback: 'Profile request failed'));
     }
   }
 
@@ -37,7 +35,7 @@ class ProfileRepository {
       );
       return response.data!;
     } on DioException catch (e) {
-      throw Exception(_msg(e));
+      throw Exception(describeApiError(e, fallback: 'Profile request failed'));
     }
   }
 
@@ -47,7 +45,7 @@ class ProfileRepository {
           await _usersApi.profileControllerUpdateAvatar(updateAvatarDto: dto);
       return response.data!;
     } on DioException catch (e) {
-      throw Exception(_msg(e));
+      throw Exception(describeApiError(e, fallback: 'Profile request failed'));
     }
   }
 
@@ -60,7 +58,7 @@ class ProfileRepository {
       );
       return response.data!;
     } on DioException catch (e) {
-      throw Exception(_msg(e));
+      throw Exception(describeApiError(e, fallback: 'Profile request failed'));
     }
   }
 
@@ -69,7 +67,7 @@ class ProfileRepository {
       final response = await _usersApi.profileControllerDeleteAccount();
       return response.data!;
     } on DioException catch (e) {
-      throw Exception(_msg(e));
+      throw Exception(describeApiError(e, fallback: 'Profile request failed'));
     }
   }
 
@@ -79,7 +77,7 @@ class ProfileRepository {
           await _usersApi.profileControllerGetPublicProfile(id: userId);
       return response.data!;
     } on DioException catch (e) {
-      throw Exception(_msg(e));
+      throw Exception(describeApiError(e, fallback: 'Profile request failed'));
     }
   }
 
@@ -96,7 +94,7 @@ class ProfileRepository {
       );
       return response.data!;
     } on DioException catch (e) {
-      throw Exception(_msg(e));
+      throw Exception(describeApiError(e, fallback: 'Profile request failed'));
     }
   }
 }

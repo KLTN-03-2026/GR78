@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
+import 'package:mobile_app_doan/core/api_error_message.dart';
 import 'package:mobile_app_doan/core/api_socket_root.dart';
 import 'package:mobile_app_doan/core/token_helper.dart';
 import 'package:mobile_app_doan/home/repo/notification_repository.dart';
@@ -34,7 +35,7 @@ class NotificationController extends GetxController {
       final list = await repository.getNotifications(unreadOnly: false);
       items.assignAll(list);
     } catch (e) {
-      errorMessage.value = e.toString();
+      errorMessage.value = describeApiError(e);
     } finally {
       isLoading.value = false;
     }
@@ -149,7 +150,7 @@ class NotificationController extends GetxController {
       await repository.markAsRead(id);
       await refreshAll();
     } catch (e) {
-      Get.snackbar('Lỗi', e.toString());
+      Get.snackbar('Lỗi', describeApiError(e));
     }
   }
 
@@ -159,7 +160,7 @@ class NotificationController extends GetxController {
       await refreshAll();
       Get.snackbar('Thành công', 'Đã đánh dấu đã đọc');
     } catch (e) {
-      Get.snackbar('Lỗi', e.toString());
+      Get.snackbar('Lỗi', describeApiError(e));
     }
   }
 
@@ -169,7 +170,7 @@ class NotificationController extends GetxController {
       items.removeWhere((e) => _rowId(e) == id);
       await loadUnreadCount();
     } catch (e) {
-      Get.snackbar('Lỗi', e.toString());
+      Get.snackbar('Lỗi', describeApiError(e));
     }
   }
 
@@ -179,7 +180,7 @@ class NotificationController extends GetxController {
       await refreshAll();
       Get.snackbar('Thành công', 'Đã xóa thông báo đã đọc');
     } catch (e) {
-      Get.snackbar('Lỗi', e.toString());
+      Get.snackbar('Lỗi', describeApiError(e));
     }
   }
 }

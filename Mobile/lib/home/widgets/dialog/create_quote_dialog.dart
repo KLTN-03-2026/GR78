@@ -1,10 +1,14 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:built_collection/built_collection.dart';
+import 'package:mobile_app_doan/core/theme/app_colors.dart';
+import 'package:mobile_app_doan/core/theme/app_radii.dart';
 
 class CreateQuoteDialog extends StatefulWidget {
   final String postId;
 
-  const CreateQuoteDialog({Key? key, required this.postId}) : super(key: key);
+  const CreateQuoteDialog({super.key, required this.postId});
 
   @override
   State<CreateQuoteDialog> createState() => _CreateQuoteDialogState();
@@ -62,21 +66,29 @@ class _CreateQuoteDialogState extends State<CreateQuoteDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final p = scheme.primary;
+    final screen = MediaQuery.sizeOf(context);
+    // Dialog must get finite width/height so [Row] + [FilledButton] do not see w=Infinity.
+    final dialogWidth = math.min(600.0, screen.width - 48).clamp(280.0, 600.0);
+    final dialogHeight = math.min(700.0, screen.height * 0.88).clamp(360.0, 700.0);
+
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 600, maxHeight: 700),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadii.xl),
+      ),
+      child: SizedBox(
+        width: dialogWidth,
+        height: dialogHeight,
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: MainAxisSize.max,
           children: [
-            // Header
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
               decoration: const BoxDecoration(
-                color: Colors.teal,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
+                gradient: AppColors.brandGradientHorizontal,
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(AppRadii.xl),
                 ),
               ),
               child: Row(
@@ -84,18 +96,20 @@ class _CreateQuoteDialogState extends State<CreateQuoteDialog> {
                   const Icon(
                     Icons.request_quote,
                     color: Colors.white,
-                    size: 28,
+                    size: 26,
                   ),
                   const SizedBox(width: 12),
-                  const Text(
-                    'Tạo báo giá mới',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                  const Expanded(
+                    child: Text(
+                      'Tạo báo giá mới',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                      ),
                     ),
                   ),
-                  const Spacer(),
                   IconButton(
                     icon: const Icon(Icons.close, color: Colors.white),
                     onPressed: () => Navigator.of(context).pop(),
@@ -118,19 +132,13 @@ class _CreateQuoteDialogState extends State<CreateQuoteDialog> {
                         keyboardType: TextInputType.number,
                         decoration: InputDecoration(
                           labelText: 'Giá *',
-                          prefixIcon: const Icon(
-                            Icons.attach_money,
-                            color: Colors.teal,
-                          ),
+                          prefixIcon: Icon(Icons.attach_money, color: p),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(
-                              color: Colors.teal,
-                              width: 2,
-                            ),
+                            borderSide: BorderSide(color: p, width: 2),
                           ),
                         ),
                         validator: (value) {
@@ -151,19 +159,13 @@ class _CreateQuoteDialogState extends State<CreateQuoteDialog> {
                         maxLines: 4,
                         decoration: InputDecoration(
                           labelText: 'Mô tả chi tiết *',
-                          prefixIcon: const Icon(
-                            Icons.description,
-                            color: Colors.teal,
-                          ),
+                          prefixIcon: Icon(Icons.description, color: p),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(
-                              color: Colors.teal,
-                              width: 2,
-                            ),
+                            borderSide: BorderSide(color: p, width: 2),
                           ),
                         ),
                         validator: (value) {
@@ -181,19 +183,13 @@ class _CreateQuoteDialogState extends State<CreateQuoteDialog> {
                         maxLines: 3,
                         decoration: InputDecoration(
                           labelText: 'Điều khoản và điều kiện',
-                          prefixIcon: const Icon(
-                            Icons.gavel,
-                            color: Colors.teal,
-                          ),
+                          prefixIcon: Icon(Icons.gavel, color: p),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(
-                              color: Colors.teal,
-                              width: 2,
-                            ),
+                            borderSide: BorderSide(color: p, width: 2),
                           ),
                         ),
                       ),
@@ -205,19 +201,13 @@ class _CreateQuoteDialogState extends State<CreateQuoteDialog> {
                         keyboardType: TextInputType.number,
                         decoration: InputDecoration(
                           labelText: 'Thời gian ước tính (phút)',
-                          prefixIcon: const Icon(
-                            Icons.access_time,
-                            color: Colors.teal,
-                          ),
+                          prefixIcon: Icon(Icons.access_time, color: p),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(
-                              color: Colors.teal,
-                              width: 2,
-                            ),
+                            borderSide: BorderSide(color: p, width: 2),
                           ),
                         ),
                         validator: (value) {
@@ -247,37 +237,30 @@ class _CreateQuoteDialogState extends State<CreateQuoteDialog> {
                               controller: _imageUrlController,
                               decoration: InputDecoration(
                                 hintText: 'Nhập URL hình ảnh',
-                                prefixIcon: const Icon(
-                                  Icons.image,
-                                  color: Colors.teal,
-                                ),
+                                prefixIcon: Icon(Icons.image, color: p),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(
-                                    color: Colors.teal,
-                                    width: 2,
-                                  ),
+                                  borderSide: BorderSide(color: p, width: 2),
                                 ),
                               ),
                             ),
                           ),
                           const SizedBox(width: 8),
-                          ElevatedButton(
+                          FilledButton(
                             onPressed: _addImageUrl,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.teal,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
+                            style: FilledButton.styleFrom(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 16,
                                 vertical: 16,
                               ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
                             ),
-                            child: const Icon(Icons.add, color: Colors.white),
+                            child: Icon(Icons.add, color: scheme.onPrimary),
                           ),
                         ],
                       ),
@@ -288,7 +271,7 @@ class _CreateQuoteDialogState extends State<CreateQuoteDialog> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.teal.withValues(alpha: 0.1),
+                            color: p.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Column(
@@ -297,11 +280,7 @@ class _CreateQuoteDialogState extends State<CreateQuoteDialog> {
                                 padding: const EdgeInsets.only(bottom: 8),
                                 child: Row(
                                   children: [
-                                    const Icon(
-                                      Icons.image,
-                                      color: Colors.teal,
-                                      size: 20,
-                                    ),
+                                    Icon(Icons.image, color: p, size: 20),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
@@ -335,10 +314,10 @@ class _CreateQuoteDialogState extends State<CreateQuoteDialog> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.grey[100],
+                color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
                 borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(16),
-                  bottomRight: Radius.circular(16),
+                  bottomLeft: Radius.circular(AppRadii.xl),
+                  bottomRight: Radius.circular(AppRadii.xl),
                 ),
               ),
               child: Row(
@@ -346,16 +325,15 @@ class _CreateQuoteDialogState extends State<CreateQuoteDialog> {
                 children: [
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text(
+                    child: Text(
                       'Hủy',
-                      style: TextStyle(color: Colors.grey),
+                      style: TextStyle(color: scheme.onSurfaceVariant),
                     ),
                   ),
                   const SizedBox(width: 12),
-                  ElevatedButton(
+                  FilledButton(
                     onPressed: _submitForm,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal,
+                    style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 32,
                         vertical: 12,
@@ -364,10 +342,7 @@ class _CreateQuoteDialogState extends State<CreateQuoteDialog> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Text(
-                      'Tạo báo giá',
-                      style: TextStyle(color: Colors.white, fontSize: 16),
-                    ),
+                    child: const Text('Tạo báo giá', style: TextStyle(fontSize: 16)),
                   ),
                 ],
               ),

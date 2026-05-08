@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:mobile_app_doan/core/api_error_message.dart';
 import 'package:mobile_app_doan/home/repo/post_repository.dart';
 import 'package:openapi/openapi.dart';
 import 'package:built_collection/built_collection.dart';
@@ -40,7 +41,7 @@ class PostController extends GetxController {
       _cursor = result.nextCursor;
       _hasMore = _cursor != null;
     } catch (e) {
-      errorMessage.value = "Lỗi tải bài viết: $e";
+      errorMessage.value = describeApiError(e);
     } finally {
       isLoading.value = false;
     }
@@ -64,13 +65,13 @@ class PostController extends GetxController {
     } on DioException catch (e) {
       // Stop infinite retry loops when server is failing.
       final status = e.response?.statusCode;
-      errorMessage.value = "Không thể tải thêm bài viết (${status ?? 'Lỗi'}).";
+      errorMessage.value = describeApiError(e);
       if (status != null && status >= 500) {
         _hasMore = false;
       }
       print("❌ Load more error: $e");
     } catch (e) {
-      errorMessage.value = "Không thể tải thêm bài viết.";
+      errorMessage.value = describeApiError(e);
       print("❌ Load more error: $e");
     } finally {
       isLoading.value = false;
@@ -102,11 +103,11 @@ class PostController extends GetxController {
 
       return true;
     } catch (e) {
-      final message = "Lỗi tạo bài: $e";
+      final message = describeApiError(e);
       errorMessage.value = message;
       Get.snackbar(
         "Không thể đăng bài",
-        e.toString(),
+        message,
         snackPosition: SnackPosition.BOTTOM,
         duration: const Duration(seconds: 3),
         backgroundColor: const Color(0xFFFFF1F2),
@@ -159,7 +160,7 @@ class PostController extends GetxController {
       successMessage.value = "Cập nhật bài viết thành công!";
       return true;
     } catch (e) {
-      errorMessage.value = "Lỗi cập nhật bài: $e";
+      errorMessage.value = describeApiError(e);
       return false;
     } finally {
       isUpdating.value = false;
@@ -192,7 +193,7 @@ class PostController extends GetxController {
       );
       return true;
     } catch (e) {
-      errorMessage.value = "Lỗi xóa bài: $e";
+      errorMessage.value = describeApiError(e);
       return false;
     } finally {
       isDeleting.value = false;
@@ -212,7 +213,7 @@ class PostController extends GetxController {
       _cursor = result.nextCursor;
       _hasMore = _cursor != null;
     } catch (e) {
-      errorMessage.value = "Không thể tải bài của tôi: $e";
+      errorMessage.value = describeApiError(e);
     } finally {
       isLoading.value = false;
     }

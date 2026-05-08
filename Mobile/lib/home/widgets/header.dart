@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:mobile_app_doan/core/widgets/app_page_header.dart';
+import 'package:mobile_app_doan/core/widgets/app_search_field.dart';
 
 class HeaderApp extends StatelessWidget {
   final String title;
@@ -18,9 +19,9 @@ class HeaderApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return AppPageHeader(
       title: title,
+      showBackButton: false,
       trailing: [
         if (onMorePressed != null)
           IconButton(
@@ -28,19 +29,10 @@ class HeaderApp extends StatelessWidget {
             icon: const Icon(LucideIcons.moreVertical, color: Colors.white),
           ),
       ],
-      bottom: TextField(
+      bottom: AppSearchField(
+        hintText: searchHint,
         onChanged: onSearch,
-        decoration: InputDecoration(
-          hintText: searchHint,
-          filled: true,
-          fillColor: scheme.surface,
-          prefixIcon: Icon(Icons.search, color: scheme.onSurfaceVariant),
-          contentPadding: const EdgeInsets.symmetric(vertical: 0),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(30),
-            borderSide: BorderSide.none,
-          ),
-        ),
+        onSurface: true,
       ),
     );
   }

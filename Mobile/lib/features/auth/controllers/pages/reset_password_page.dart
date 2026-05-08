@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:mobile_app_doan/core/api_error_message.dart';
 import 'package:mobile_app_doan/core/theme/app_spacing.dart';
 import 'package:mobile_app_doan/core/widgets/app_auth_shell.dart';
 import 'package:mobile_app_doan/core/widgets/app_primary_button.dart';
 import 'package:mobile_app_doan/features/auth/controllers/auth_controller.dart';
 
-/// Token lấy từ email (backend `FRONTEND_URL/reset-password?token=...`).
-/// Trên app: truyền `Get.parameters['token']` hoặc nhập tay.
+/// Token từ link email (POST /auth/reset-password). Luồng OTP dùng [ResetPasswordOtpPage].
+/// Trên app: `Get.parameters['token']` hoặc nhập tay.
 class ResetPasswordPage extends StatefulWidget {
   const ResetPasswordPage({super.key});
 
@@ -49,7 +50,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         Get.offAllNamed('/login');
       }
     } catch (e) {
-      Get.snackbar('Lỗi', e.toString());
+      Get.snackbar('Lỗi', describeApiError(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }

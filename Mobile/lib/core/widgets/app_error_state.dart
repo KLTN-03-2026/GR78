@@ -22,10 +22,19 @@ class AppErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.error_outline_rounded,
-              size: 56,
-              color: theme.colorScheme.error.withValues(alpha: 0.85),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.error.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                child: Icon(
+                  Icons.error_outline_rounded,
+                  size: 44,
+                  color: theme.colorScheme.error.withValues(alpha: 0.88),
+                ),
+              ),
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(

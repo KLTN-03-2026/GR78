@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:mobile_app_doan/core/api_error_message.dart';
 import 'package:mobile_app_doan/core/api_socket_root.dart';
 import 'package:mobile_app_doan/core/token_helper.dart';
 import 'package:mobile_app_doan/home/controllers/user_controller.dart';
@@ -218,6 +219,30 @@ class ChatController extends GetxController {
     return n is num ? n.toInt() : int.tryParse('$n') ?? 0;
   }
 
+  /// User id đối phương (mở public profile).
+  String? peerUserId(Map<String, dynamic> c) {
+    final my = _myUserId;
+    if (my == null) return null;
+    final cid = c['customerId']?.toString();
+    if (my == cid) {
+      final direct = c['providerId']?.toString();
+      if (direct != null && direct.isNotEmpty) return direct;
+      final p = c['provider'];
+      if (p is Map) {
+        final id = p['id'] ?? p['userId'] ?? p['user_id'];
+        if (id != null && id.toString().isNotEmpty) return id.toString();
+      }
+      return null;
+    }
+    final cust = c['customer'];
+    if (cust is Map) {
+      final id = cust['id'] ?? cust['userId'] ?? cust['user_id'];
+      if (id != null && id.toString().isNotEmpty) return id.toString();
+    }
+    if (cid != null && cid.isNotEmpty) return cid;
+    return null;
+  }
+
   Future<void> loadConversations() async {
     if (!Get.isRegistered<ProfileController>()) return;
     final pc = Get.find<ProfileController>();
@@ -231,7 +256,7 @@ class ChatController extends GetxController {
       final list = _asMapList(raw);
       conversations.assignAll(list);
     } catch (e) {
-      errorMessage.value = e.toString();
+      errorMessage.value = describeApiError(e);
       conversations.clear();
     } finally {
       isLoading.value = false;
@@ -275,7 +300,7 @@ class ChatController extends GetxController {
         messages.insertAll(0, list);
       }
     } catch (e) {
-      errorMessage.value = e.toString();
+      errorMessage.value = describeApiError(e);
     } finally {
       isLoading.value = false;
     }
@@ -306,7 +331,7 @@ class ChatController extends GetxController {
       );
       await loadMessages(id);
     } catch (e) {
-      Get.snackbar('Lỗi', e.toString());
+      Get.snackbar('Lỗi', describeApiError(e));
     } finally {
       isSending.value = false;
     }
@@ -320,7 +345,7 @@ class ChatController extends GetxController {
       Get.snackbar('Đã đóng', 'Cuộc trò chuyện đã đóng');
       backToList();
     } catch (e) {
-      Get.snackbar('Lỗi', e.toString());
+      Get.snackbar('Lỗi', describeApiError(e));
     }
   }
 
@@ -343,7 +368,7 @@ class ChatController extends GetxController {
       Get.snackbar('Đã xóa', '');
       backToList();
     } catch (e) {
-      Get.snackbar('Lỗi', e.toString());
+      Get.snackbar('Lỗi', describeApiError(e));
     }
   }
 

@@ -1,6 +1,9 @@
 // File: edit_profile_dialog.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:mobile_app_doan/core/api_error_message.dart';
+import 'package:mobile_app_doan/core/theme/app_colors.dart';
+import 'package:mobile_app_doan/core/theme/app_radii.dart';
 import 'package:mobile_app_doan/home/controllers/user_controller.dart';
 import 'package:openapi/openapi.dart';
 import 'package:intl/intl.dart';
@@ -244,7 +247,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
       if (mounted) {
         Get.snackbar(
           'Lỗi',
-          e.toString().replaceAll('Exception: ', ''),
+          describeApiError(e),
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: Colors.red,
           colorText: Colors.white,
@@ -262,23 +265,23 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Dialog(
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadii.xl),
       ),
       child: Container(
         constraints: const BoxConstraints(maxHeight: 600),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header
             Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.teal,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              decoration: const BoxDecoration(
+                gradient: AppColors.brandGradientHorizontal,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(AppRadii.xl),
+                  topRight: Radius.circular(AppRadii.xl),
                 ),
               ),
               child: Row(
@@ -459,10 +462,10 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.grey[100],
+                color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
                 borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(16),
-                  bottomRight: Radius.circular(16),
+                  bottomLeft: Radius.circular(AppRadii.xl),
+                  bottomRight: Radius.circular(AppRadii.xl),
                 ),
               ),
               child: Row(
@@ -475,23 +478,23 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                     child: const Text('Hủy'),
                   ),
                   const SizedBox(width: 8),
-                  ElevatedButton(
+                  FilledButton(
                     onPressed: isSaving ? null : _saveProfile,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal,
-                      foregroundColor: Colors.white,
+                    style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 24,
                         vertical: 12,
                       ),
                     ),
                     child: isSaving
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                scheme.onPrimary,
+                              ),
                             ),
                           )
                         : const Text('Lưu'),

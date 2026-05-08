@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:mobile_app_doan/core/api_error_message.dart';
 import 'package:mobile_app_doan/home/repo/quote_repository.dart';
 import 'package:mobile_app_doan/home/utils/parse_api_list.dart';
 import 'package:openapi/openapi.dart';
@@ -11,6 +12,7 @@ class QuoteController extends GetxController {
   final errorMessage = ''.obs;
 
   final postQuotes = <Map<String, dynamic>>[].obs;
+  final customRequestQuotes = <Map<String, dynamic>>[].obs;
   final myQuotes = <Map<String, dynamic>>[].obs;
 
   Future<bool> createQuote(CreateQuoteDto content) async {
@@ -22,7 +24,7 @@ class QuoteController extends GetxController {
       Get.snackbar('Thành công', 'Đã gửi báo giá');
       return true;
     } catch (e) {
-      final message = e.toString().replaceAll('Exception: ', '');
+      final message = describeApiError(e);
       errorMessage.value = message;
       Get.snackbar('Lỗi', message);
       return false;
@@ -38,8 +40,22 @@ class QuoteController extends GetxController {
       final raw = await repository.getPostQuotes(postId);
       postQuotes.assignAll(parseObjectList(raw));
     } catch (e) {
-      errorMessage.value = e.toString();
+      errorMessage.value = describeApiError(e);
       postQuotes.clear();
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> loadQuotesForCustomRequest(String customRequestId) async {
+    try {
+      isLoading.value = true;
+      errorMessage.value = '';
+      final raw = await repository.getQuotesForCustomRequest(customRequestId);
+      customRequestQuotes.assignAll(parseObjectList(raw));
+    } catch (e) {
+      errorMessage.value = describeApiError(e);
+      customRequestQuotes.clear();
     } finally {
       isLoading.value = false;
     }
@@ -52,20 +68,37 @@ class QuoteController extends GetxController {
       final raw = await repository.getMyQuotes();
       myQuotes.assignAll(parseObjectList(raw));
     } catch (e) {
-      errorMessage.value = e.toString();
+      errorMessage.value = describeApiError(e);
       myQuotes.clear();
     } finally {
       isLoading.value = false;
     }
   }
 
-  Future<void> acceptQuote(String id) async {
+  Future<bool> acceptQuote(String id) async {
     try {
       isLoading.value = true;
       await repository.acceptQuote(id);
-      Get.snackbar('Thành công', 'Đã chấp nhận báo giá');
+      Get.snackbar('Thành công', 'Đã mở chat — trao đổi thêm với thợ');
+      return true;
     } catch (e) {
-      Get.snackbar('Lỗi', e.toString());
+      Get.snackbar('Lỗi', describeApiError(e));
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// Khách: chấp nhận giá ngay (quote PENDING) → tạo đơn chờ thợ xác nhận.
+  Future<bool> acceptQuoteDirect(String id) async {
+    try {
+      isLoading.value = true;
+      await repository.acceptQuoteDirect(id);
+      Get.snackbar('Thành công', 'Đã tạo đơn hàng. Thợ sẽ xác nhận sớm.');
+      return true;
+    } catch (e) {
+      Get.snackbar('Lỗi', describeApiError(e));
+      return false;
     } finally {
       isLoading.value = false;
     }
@@ -80,7 +113,7 @@ class QuoteController extends GetxController {
       await repository.rejectQuote(id, dto);
       Get.snackbar('Thành công', 'Đã từ chối báo giá');
     } catch (e) {
-      Get.snackbar('Lỗi', e.toString());
+      Get.snackbar('Lỗi', describeApiError(e));
     } finally {
       isLoading.value = false;
     }
@@ -92,7 +125,7 @@ class QuoteController extends GetxController {
       await repository.updateQuote(id, dto);
       Get.snackbar('Thành công', 'Đã cập nhật báo giá');
     } catch (e) {
-      Get.snackbar('Lỗi', e.toString());
+      Get.snackbar('Lỗi', describeApiError(e));
     } finally {
       isLoading.value = false;
     }
@@ -107,7 +140,7 @@ class QuoteController extends GetxController {
       );
       Get.snackbar('Thành công', 'Đã xóa báo giá');
     } catch (e) {
-      Get.snackbar('Lỗi', e.toString());
+      Get.snackbar('Lỗi', describeApiError(e));
     } finally {
       isLoading.value = false;
     }
@@ -120,7 +153,7 @@ class QuoteController extends GetxController {
       await loadMyQuotes();
       Get.snackbar('Thành công', 'Đã hủy báo giá');
     } catch (e) {
-      Get.snackbar('Lỗi', e.toString());
+      Get.snackbar('Lỗi', describeApiError(e));
     } finally {
       isLoading.value = false;
     }
@@ -147,20 +180,22 @@ class QuoteController extends GetxController {
       );
       Get.snackbar('Thành công', 'Đã gửi báo giá mới');
     } catch (e) {
-      Get.snackbar('Lỗi', e.toString());
+      Get.snackbar('Lỗi', describeApiError(e));
     } finally {
       isLoading.value = false;
     }
   }
 
-  /// Khách: yêu cầu đặt đơn (POST /quotes/:id/request-order).
-  Future<void> requestOrder(String id) async {
+  /// Khách: sau khi đã trao đổi — yêu cầu đặt đơn theo giá hiện tại (POST /quotes/:id/request-order).
+  Future<bool> requestOrder(String id) async {
     try {
       isLoading.value = true;
       await repository.requestOrder(id);
-      Get.snackbar('Thành công', 'Đã gửi yêu cầu đặt đơn');
+      Get.snackbar('Thành công', 'Đã gửi yêu cầu đặt đơn. Thợ sẽ xác nhận.');
+      return true;
     } catch (e) {
-      Get.snackbar('Lỗi', e.toString());
+      Get.snackbar('Lỗi', describeApiError(e));
+      return false;
     } finally {
       isLoading.value = false;
     }
@@ -171,7 +206,7 @@ class QuoteController extends GetxController {
       isLoading.value = true;
       return await repository.getQuoteWithRevisions(id);
     } catch (e) {
-      Get.snackbar('Lỗi', e.toString());
+      Get.snackbar('Lỗi', describeApiError(e));
       rethrow;
     } finally {
       isLoading.value = false;

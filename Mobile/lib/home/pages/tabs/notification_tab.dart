@@ -8,6 +8,7 @@ import 'package:mobile_app_doan/core/widgets/app_error_state.dart';
 import 'package:mobile_app_doan/core/widgets/app_list_skeleton.dart';
 import 'package:mobile_app_doan/core/widgets/app_page_header.dart';
 import 'package:mobile_app_doan/home/controllers/notification_controller.dart';
+import 'package:mobile_app_doan/home/utils/notification_navigation.dart';
 import 'package:mobile_app_doan/home/utils/parse_api_list.dart';
 
 class NotificationTab extends StatefulWidget {
@@ -67,6 +68,7 @@ class _NotificationTabState extends State<NotificationTab>
         children: [
           AppPageHeader(
             title: 'Thông báo',
+            showBackButton: false,
             trailing: [
               PopupMenuButton<String>(
                 icon: const Icon(LucideIcons.moreVertical, color: Colors.white),
@@ -198,8 +200,11 @@ class _NotificationTabState extends State<NotificationTab>
                   ),
                   subtitle:
                       body.isEmpty ? null : Text(body, maxLines: 3, overflow: TextOverflow.ellipsis),
-                  onTap: () {
-                    if (id.isNotEmpty && !read) c.markRead(id);
+                  onTap: () async {
+                    if (id.isNotEmpty && !read) {
+                      unawaited(c.markRead(id));
+                    }
+                    await openScreenForNotification(context, item);
                   },
                 ),
               ),

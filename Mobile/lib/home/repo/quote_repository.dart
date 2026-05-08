@@ -1,5 +1,6 @@
 import 'package:built_collection/built_collection.dart';
 import 'package:dio/dio.dart';
+import 'package:mobile_app_doan/core/api_error_message.dart';
 import 'package:openapi/openapi.dart';
 
 class QuoteRepository {
@@ -9,9 +10,6 @@ class QuoteRepository {
 
   final QuotesApi _quotesApi;
   final Dio _dio;
-
-  String _msg(DioException e) =>
-      e.response?.data?['message']?.toString() ?? 'Quote request failed';
 
   Map<String, dynamic> _updateQuoteBody(UpdateQuoteDto dto) {
     return <String, dynamic>{
@@ -28,7 +26,7 @@ class QuoteRepository {
     try {
       await _quotesApi.quoteControllerCreateQuote(createQuoteDto: newQuote);
     } on DioException catch (e) {
-      throw Exception(_msg(e));
+      throw Exception(describeApiError(e, fallback: 'Quote request failed'));
     }
   }
 
@@ -37,7 +35,17 @@ class QuoteRepository {
       final res = await _quotesApi.quoteControllerGetPostQuotes(postId: postId);
       return res.data;
     } on DioException catch (e) {
-      throw Exception(_msg(e));
+      throw Exception(describeApiError(e, fallback: 'Quote request failed'));
+    }
+  }
+
+  /// GET /quotes/custom-request/:customRequestId (báo giá cho yêu cầu riêng).
+  Future<dynamic> getQuotesForCustomRequest(String customRequestId) async {
+    try {
+      final res = await _dio.get<Object>('/quotes/custom-request/$customRequestId');
+      return res.data;
+    } on DioException catch (e) {
+      throw Exception(describeApiError(e, fallback: 'Quote request failed'));
     }
   }
 
@@ -62,7 +70,7 @@ class QuoteRepository {
       );
       return res.data;
     } on DioException catch (e) {
-      throw Exception(_msg(e));
+      throw Exception(describeApiError(e, fallback: 'Quote request failed'));
     }
   }
 
@@ -71,7 +79,7 @@ class QuoteRepository {
       final res = await _quotesApi.quoteControllerGetQuoteById(id: id);
       return res.data;
     } on DioException catch (e) {
-      throw Exception(_msg(e));
+      throw Exception(describeApiError(e, fallback: 'Quote request failed'));
     }
   }
 
@@ -80,7 +88,7 @@ class QuoteRepository {
     try {
       await _dio.patch<Object>('/quotes/$id', data: _updateQuoteBody(dto));
     } on DioException catch (e) {
-      throw Exception(_msg(e));
+      throw Exception(describeApiError(e, fallback: 'Quote request failed'));
     }
   }
 
@@ -88,7 +96,7 @@ class QuoteRepository {
     try {
       await _quotesApi.quoteControllerDeleteQuote(id: id);
     } on DioException catch (e) {
-      throw Exception(_msg(e));
+      throw Exception(describeApiError(e, fallback: 'Quote request failed'));
     }
   }
 
@@ -99,7 +107,7 @@ class QuoteRepository {
         data: {if (reason != null && reason.isNotEmpty) 'reason': reason},
       );
     } on DioException catch (e) {
-      throw Exception(_msg(e));
+      throw Exception(describeApiError(e, fallback: 'Quote request failed'));
     }
   }
 
@@ -108,7 +116,7 @@ class QuoteRepository {
     try {
       await _dio.post<Object>('/quotes/$id/accept-for-chat');
     } on DioException catch (e) {
-      throw Exception(_msg(e));
+      throw Exception(describeApiError(e, fallback: 'Quote request failed'));
     }
   }
 
@@ -116,7 +124,7 @@ class QuoteRepository {
     try {
       await _quotesApi.quoteControllerRejectQuote(id: id, rejectQuoteDto: dto);
     } on DioException catch (e) {
-      throw Exception(_msg(e));
+      throw Exception(describeApiError(e, fallback: 'Quote request failed'));
     }
   }
 
@@ -141,7 +149,7 @@ class QuoteRepository {
         },
       );
     } on DioException catch (e) {
-      throw Exception(_msg(e));
+      throw Exception(describeApiError(e, fallback: 'Quote request failed'));
     }
   }
 
@@ -150,7 +158,17 @@ class QuoteRepository {
     try {
       await _dio.post<Object>('/quotes/$id/request-order');
     } on DioException catch (e) {
-      throw Exception(_msg(e));
+      throw Exception(describeApiError(e, fallback: 'Quote request failed'));
+    }
+  }
+
+  /// Customer: POST /orders/accept-quote-direct/:quoteId — chấp nhận giá ngay, tạo đơn PENDING (chỉ quote PENDING).
+  Future<dynamic> acceptQuoteDirect(String quoteId) async {
+    try {
+      final res = await _dio.post<Object>('/orders/accept-quote-direct/$quoteId');
+      return res.data;
+    } on DioException catch (e) {
+      throw Exception(describeApiError(e, fallback: 'Quote request failed'));
     }
   }
 
@@ -160,7 +178,7 @@ class QuoteRepository {
       final res = await _dio.get<Object>('/quotes/$id/with-revisions');
       return res.data;
     } on DioException catch (e) {
-      throw Exception(_msg(e));
+      throw Exception(describeApiError(e, fallback: 'Quote request failed'));
     }
   }
 }

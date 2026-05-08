@@ -26,10 +26,19 @@ class AppEmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: 56,
-              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                child: Icon(
+                  icon,
+                  size: 44,
+                  color: theme.colorScheme.primary.withValues(alpha: 0.65),
+                ),
+              ),
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(

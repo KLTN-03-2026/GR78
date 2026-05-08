@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:mobile_app_doan/core/api_error_message.dart';
 import 'package:mobile_app_doan/home/repo/user_repository.dart';
 import 'package:openapi/openapi.dart';
 
@@ -24,7 +25,7 @@ class ProfileController extends GetxController {
       final data = await repository.getMyProfile();
       profile.value = data;
     } catch (e) {
-      errorMessage.value = e.toString();
+      errorMessage.value = describeApiError(e);
     } finally {
       isLoading.value = false;
     }
@@ -39,7 +40,7 @@ class ProfileController extends GetxController {
       profile.value = data;
       return true;
     } catch (e) {
-      errorMessage.value = e.toString();
+      errorMessage.value = describeApiError(e);
       return false;
     } finally {
       isLoading.value = false;
@@ -55,7 +56,7 @@ class ProfileController extends GetxController {
       profile.value = data;
       return true;
     } catch (e) {
-      errorMessage.value = e.toString();
+      errorMessage.value = describeApiError(e);
       return false;
     } finally {
       isLoading.value = false;
@@ -70,7 +71,7 @@ class ProfileController extends GetxController {
       profile.value = data;
       return true;
     } catch (e) {
-      errorMessage.value = e.toString();
+      errorMessage.value = describeApiError(e);
       return false;
     } finally {
       isLoading.value = false;
@@ -87,7 +88,7 @@ class ProfileController extends GetxController {
       await loadProfile();
       return res;
     } catch (e) {
-      errorMessage.value = e.toString();
+      errorMessage.value = describeApiError(e);
       return null;
     } finally {
       isLoading.value = false;
@@ -100,7 +101,7 @@ class ProfileController extends GetxController {
       errorMessage.value = '';
       return await repository.deleteAccount();
     } catch (e) {
-      errorMessage.value = e.toString();
+      errorMessage.value = describeApiError(e);
       return null;
     } finally {
       isLoading.value = false;
@@ -112,7 +113,7 @@ class ProfileController extends GetxController {
       errorMessage.value = '';
       return await repository.getPublicProfile(userId);
     } catch (e) {
-      errorMessage.value = e.toString();
+      errorMessage.value = describeApiError(e);
       return null;
     }
   }
@@ -128,7 +129,7 @@ class ProfileController extends GetxController {
       );
       searchResults.value = res;
     } catch (e) {
-      errorMessage.value = e.toString();
+      errorMessage.value = describeApiError(e);
       searchResults.value = null;
     } finally {
       searchLoading.value = false;

@@ -1,4 +1,30 @@
 class Validators {
+  /// Email hoặc SĐT (VN: 10 số bắt đầu 0; cho phép +84 / 84).
+  static String? validateLoginIdentifier(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Vui lòng nhập email hoặc số điện thoại';
+    }
+    final t = value.trim();
+    if (t.contains('@')) {
+      final email = t.toLowerCase();
+      final regex = RegExp(r'^[\w\.-]+@[\w\.-]+\.\w+$');
+      if (!regex.hasMatch(email)) {
+        return 'Email không hợp lệ';
+      }
+      return null;
+    }
+    var digits = t.replaceAll(RegExp(r'\s'), '');
+    if (digits.startsWith('+84')) {
+      digits = '0${digits.substring(3)}';
+    } else if (digits.startsWith('84') && digits.length >= 10) {
+      digits = '0${digits.substring(2)}';
+    }
+    if (!RegExp(r'^0[0-9]{9}$').hasMatch(digits)) {
+      return 'Số điện thoại không hợp lệ';
+    }
+    return null;
+  }
+
   static String? validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) {
       return "Email is required";

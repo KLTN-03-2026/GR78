@@ -42,13 +42,19 @@ class AppBrandHeader extends StatelessWidget {
               color: Colors.white,
               fontSize: 28,
               fontWeight: FontWeight.bold,
+              height: 1.15,
+              letterSpacing: -0.4,
             ),
           ),
           if (subtitle != null) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpacing.xs),
             Text(
               subtitle!,
-              style: const TextStyle(color: Colors.white70, fontSize: 16),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.88),
+                fontSize: 16,
+                height: 1.35,
+              ),
             ),
           ],
         ],

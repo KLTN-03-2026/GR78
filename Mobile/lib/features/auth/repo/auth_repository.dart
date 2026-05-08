@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:mobile_app_doan/core/api_error_message.dart';
 import 'package:openapi/openapi.dart';
 import 'package:mobile_app_doan/utils/device_id.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,16 +17,85 @@ class AuthRepository {
     this._dio,
   );
 
-  /// Khớp POST /auth/forgot-password (email link reset).
+  /// Khớp POST /auth/forgot-password-otp (backend mới — gửi OTP 6 số).
   Future<void> forgotPassword(String email) async {
     try {
-      await _dio.post<Object>(
-        '/auth/forgot-password',
+      final response = await _dio.post<Object>(
+        '/auth/forgot-password-otp',
         data: {'email': email.trim().toLowerCase()},
       );
+      _throwIfErrorStatus(response);
     } on DioException catch (e) {
-      final msg = e.response?.data?['message'] ?? e.message ?? 'Forgot password failed';
-      throw Exception(msg);
+      throw Exception(describeApiError(e));
+    }
+  }
+
+  Future<void> verifyEmail({
+    required String email,
+    required String otp,
+  }) async {
+    try {
+      final response = await _dio.post<Object>(
+        '/auth/verify-email',
+        data: {
+          'email': email.trim().toLowerCase(),
+          'otp': otp.trim(),
+        },
+      );
+      _throwIfErrorStatus(response);
+    } on DioException catch (e) {
+      throw Exception(describeApiError(e));
+    }
+  }
+
+  Future<void> resendVerification(String email) async {
+    try {
+      final response = await _dio.post<Object>(
+        '/auth/resend-verification',
+        data: {'email': email.trim().toLowerCase()},
+      );
+      _throwIfErrorStatus(response);
+    } on DioException catch (e) {
+      throw Exception(describeApiError(e));
+    }
+  }
+
+  /// Ném lỗi khi Dio không tự throw do validateStatus cho phép 4xx.
+  void _throwIfErrorStatus(Response<Object> response) {
+    final status = response.statusCode ?? 0;
+    if (status >= 400) {
+      final body = response.data;
+      String message = 'Lỗi không xác định (HTTP $status)';
+      if (body is Map) {
+        final raw = body['message'];
+        if (raw is String) {
+          message = raw;
+        } else if (raw is List && raw.isNotEmpty) {
+          message = raw.first.toString();
+        }
+      }
+      throw Exception(message);
+    }
+  }
+
+  /// Đặt lại mật khẩu bằng OTP (POST /auth/reset-password-otp).
+  Future<void> resetPasswordWithOtp({
+    required String email,
+    required String otp,
+    required String newPassword,
+  }) async {
+    try {
+      final response = await _dio.post<Object>(
+        '/auth/reset-password-otp',
+        data: {
+          'email': email.trim().toLowerCase(),
+          'otp': otp.trim(),
+          'newPassword': newPassword,
+        },
+      );
+      _throwIfErrorStatus(response);
+    } on DioException catch (e) {
+      throw Exception(describeApiError(e));
     }
   }
 
@@ -35,13 +105,13 @@ class AuthRepository {
     required String newPassword,
   }) async {
     try {
-      await _dio.post<Object>(
+      final response = await _dio.post<Object>(
         '/auth/reset-password',
         data: {'token': token, 'newPassword': newPassword},
       );
+      _throwIfErrorStatus(response);
     } on DioException catch (e) {
-      final msg = e.response?.data?['message'] ?? e.message ?? 'Reset password failed';
-      throw Exception(msg);
+      throw Exception(describeApiError(e));
     }
   }
 
@@ -50,9 +120,7 @@ class AuthRepository {
     try {
       await _authCommonApi.authControllerLogoutAll();
     } on DioException catch (e) {
-      final message =
-          e.response?.data?['message'] ?? e.message ?? 'Logout all failed';
-      throw Exception(message);
+      throw Exception(describeApiError(e));
     }
   }
 
@@ -70,9 +138,7 @@ class AuthRepository {
       }
       return response.data!;
     } on DioException catch (e) {
-      final message =
-          e.response?.data?['message'] ?? e.message ?? 'Web login failed';
-      throw Exception(message);
+      throw Exception(describeApiError(e));
     }
   }
 
@@ -80,9 +146,7 @@ class AuthRepository {
     try {
       await _authWebApi.authControllerLogout();
     } on DioException catch (e) {
-      final message =
-          e.response?.data?['message'] ?? e.message ?? 'Web logout failed';
-      throw Exception(message);
+      throw Exception(describeApiError(e));
     }
   }
 
@@ -90,9 +154,7 @@ class AuthRepository {
     try {
       await _authWebApi.authControllerRefresh();
     } on DioException catch (e) {
-      final message =
-          e.response?.data?['message'] ?? e.message ?? 'Web refresh failed';
-      throw Exception(message);
+      throw Exception(describeApiError(e));
     }
   }
   Future<LoginResponseDto> login(String identifier, String password) async {
@@ -123,11 +185,7 @@ class AuthRepository {
 
       return dto;
     } on DioException catch (e) {
-      // Lấy message từ server nếu có
-      final message =
-          e.response?.data?['message'] ?? e.message ?? "Login failed";
-
-      throw Exception(message);
+      throw Exception(describeApiError(e));
     }
   }
 
@@ -153,8 +211,7 @@ class AuthRepository {
         print("⚠️ Refresh token already invalid, skip logoutMobile");
         return;
       }
-      final msg = e.response?.data?['message'] ?? "Logout failed";
-      throw Exception(msg);
+      throw Exception(describeApiError(e));
     }
   }
 
@@ -169,8 +226,7 @@ class AuthRepository {
         refreshToken: refreshToken,
       );
     } on DioException catch (e) {
-      final msg = e.response?.data?['message'] ?? "Logout device failed";
-      throw Exception(msg);
+      throw Exception(describeApiError(e));
     }
   }
 
@@ -184,8 +240,7 @@ class AuthRepository {
       );
       return response.data?.asMap;
     } on DioException catch (e) {
-      final msg = e.response?.data?['message'] ?? "Refresh token failed";
-      throw Exception(msg);
+      throw Exception(describeApiError(e));
     }
   }
 
@@ -208,8 +263,7 @@ class AuthRepository {
 
       await _authCommonApi.authControllerRegister(registerDto: registerDto);
     } on DioException catch (e) {
-      final msg = e.response?.data?['message'] ?? "Registration failed";
-      throw Exception(msg);
+      throw Exception(describeApiError(e));
     }
   }
 }

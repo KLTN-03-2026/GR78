@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:mobile_app_doan/core/theme/app_colors.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile_app_doan/home/controllers/post_controller.dart';
 import 'package:openapi/openapi.dart';
@@ -8,7 +9,7 @@ import 'package:built_collection/built_collection.dart';
 class CreatePostDialog extends StatefulWidget {
   final Function(CreatePostDto) onSubmit;
 
-  const CreatePostDialog({Key? key, required this.onSubmit}) : super(key: key);
+  const CreatePostDialog({super.key, required this.onSubmit});
 
   @override
   State<CreatePostDialog> createState() => _CreatePostDialogState();
@@ -139,6 +140,8 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final p = scheme.primary;
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
@@ -149,11 +152,7 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
             // Header
             Container(
               decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF0D9488), Color(0xFF06B6D4)],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
+                gradient: AppColors.brandGradientHorizontal,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
               ),
               padding: const EdgeInsets.all(20),
@@ -195,8 +194,8 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF0D9488),
+                          borderSide: BorderSide(
+                            color: p,
                             width: 2,
                           ),
                         ),
@@ -222,8 +221,8 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF0D9488),
+                          borderSide: BorderSide(
+                            color: p,
                             width: 2,
                           ),
                         ),
@@ -240,9 +239,9 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
                     // Image URLs
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.image,
-                          color: Color(0xFF0D9488),
+                          color: p,
                           size: 20,
                         ),
                         const SizedBox(width: 8),
@@ -260,7 +259,7 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           border: Border.all(
-                            color: const Color(0xFF0D9488).withValues(
+                            color: p.withValues(
                               alpha: 0.5,
                             ),
                             width: 2,
@@ -268,10 +267,10 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
                           ),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Center(
+                        child: Center(
                           child: Text(
                             '+ Thêm URL hình ảnh',
-                            style: TextStyle(color: Color(0xFF0D9488)),
+                            style: TextStyle(color: p),
                           ),
                         ),
                       ),
@@ -285,7 +284,7 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
                           margin: const EdgeInsets.only(bottom: 8),
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF0D9488).withValues(
+                            color: p.withValues(
                               alpha: 0.1,
                             ),
                             borderRadius: BorderRadius.circular(8),
@@ -302,7 +301,7 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
                                   errorBuilder: (_, __, ___) => Container(
                                     width: 48,
                                     height: 48,
-                                    color: Colors.grey[300],
+                                    color: scheme.surfaceContainerHighest,
                                     child: const Icon(Icons.broken_image),
                                   ),
                                 ),
@@ -335,9 +334,9 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
                     // Location
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.location_on,
-                          color: Color(0xFF0D9488),
+                          color: p,
                           size: 20,
                         ),
                         const SizedBox(width: 8),
@@ -357,8 +356,8 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF0D9488),
+                          borderSide: BorderSide(
+                            color: p,
                             width: 2,
                           ),
                         ),
@@ -369,9 +368,9 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
                     // Desired Time
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.calendar_today,
-                          color: Color(0xFF0D9488),
+                          color: p,
                           size: 20,
                         ),
                         const SizedBox(width: 8),
@@ -388,7 +387,7 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
                       child: Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey),
+                          border: Border.all(color: scheme.outlineVariant),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
@@ -402,14 +401,14 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
                                     : 'Chọn ngày và giờ',
                                 style: TextStyle(
                                   color: _desiredTime != null
-                                      ? Colors.black
-                                      : Colors.grey,
+                                      ? scheme.onSurface
+                                      : scheme.onSurfaceVariant,
                                 ),
                               ),
                             ),
-                            const Icon(
+                            Icon(
                               Icons.access_time,
-                              color: Color(0xFF0D9488),
+                              color: p,
                             ),
                           ],
                         ),
@@ -420,9 +419,9 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
                     // Budget
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.attach_money,
-                          color: Color(0xFF0D9488),
+                          color: p,
                           size: 20,
                         ),
                         const SizedBox(width: 8),
@@ -443,8 +442,8 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF0D9488),
+                          borderSide: BorderSide(
+                            color: p,
                             width: 2,
                           ),
                         ),
@@ -459,7 +458,7 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: Colors.grey.shade300)),
+                border: Border(top: BorderSide(color: scheme.outlineVariant)),
               ),
               child: Row(
                 children: [
@@ -477,19 +476,15 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: ElevatedButton(
+                    child: FilledButton(
                       onPressed: _handleSubmit,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0D9488),
+                      style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: const Text(
-                        'Tạo Post',
-                        style: TextStyle(color: Colors.white),
-                      ),
+                      child: const Text('Tạo Post'),
                     ),
                   ),
                 ],

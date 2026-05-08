@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mobile_app_doan/core/widgets/app_empty_state.dart';
-import 'package:mobile_app_doan/core/widgets/app_error_state.dart';
-import 'package:mobile_app_doan/core/widgets/app_list_skeleton.dart';
+import 'package:intl/intl.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+import 'package:mobile_app_doan/core/theme/app_spacing.dart';
+import 'package:mobile_app_doan/core/utils/status_format.dart';
+import 'package:mobile_app_doan/core/widgets/widgets.dart';
 import 'package:mobile_app_doan/home/controllers/order_controller.dart';
 import 'package:mobile_app_doan/home/pages/order_detail_page.dart';
 
@@ -15,6 +17,14 @@ class OrdersPage extends StatefulWidget {
 
 class _OrdersPageState extends State<OrdersPage> {
   String? _filter;
+
+  static const _filters = <_StatusFilter>[
+    _StatusFilter(null, 'Tất cả'),
+    _StatusFilter('pending', 'Đang chờ'),
+    _StatusFilter('in_progress', 'Đang làm'),
+    _StatusFilter('completed', 'Hoàn thành'),
+    _StatusFilter('cancelled', 'Đã hủy'),
+  ];
 
   @override
   void initState() {
@@ -36,64 +46,63 @@ class _OrdersPageState extends State<OrdersPage> {
   Widget build(BuildContext context) {
     final oc = Get.find<OrderController>();
     final scheme = Theme.of(context).colorScheme;
+    final money = NumberFormat.decimalPattern('vi_VN');
 
     return Scaffold(
       backgroundColor: scheme.surfaceContainerLowest,
-      appBar: AppBar(
-        title: const Text('Đơn hàng'),
-        actions: [
-          IconButton(onPressed: _reload, icon: const Icon(Icons.refresh)),
-        ],
-      ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-            child: Obx(() {
+          AppPageHeader(
+            title: 'Đơn hàng',
+            subtitle: 'Theo dõi tất cả đơn hàng của bạn',
+            trailing: [
+              IconButton(
+                tooltip: 'Làm mới',
+                onPressed: _reload,
+                icon: const Icon(Icons.refresh, color: Colors.white),
+              ),
+            ],
+            bottom: Obx(() {
               final s = oc.stats.value;
-              final text = s == null
-                  ? ''
-                  : 'Tổng: ${s['total'] ?? '—'} · Đang làm: ${s['inProgress'] ?? '—'} · Hoàn thành: ${s['completed'] ?? '—'}';
-              if (text.isEmpty) return const SizedBox.shrink();
-              return Align(
-                alignment: Alignment.centerLeft,
-                child: Text(text, style: TextStyle(color: scheme.onSurfaceVariant)),
+              if (s == null) return const SizedBox.shrink();
+              final total = s['total']?.toString() ?? '—';
+              final inProg = s['inProgress']?.toString() ?? '—';
+              final done = s['completed']?.toString() ?? '—';
+              return Row(
+                children: [
+                  _HeaderStat(label: 'Tổng', value: total),
+                  const SizedBox(width: AppSpacing.xs),
+                  _HeaderStat(label: 'Đang làm', value: inProg),
+                  const SizedBox(width: AppSpacing.xs),
+                  _HeaderStat(label: 'Hoàn thành', value: done),
+                ],
               );
             }),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xs,
+              AppSpacing.xs + 4,
+              AppSpacing.xs,
+              0,
+            ),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  FilterChip(
-                    label: const Text('Tất cả'),
-                    selected: _filter == null,
-                    onSelected: (_) {
-                      setState(() => _filter = null);
-                      oc.loadOrders(status: null);
-                    },
-                  ),
-                  const SizedBox(width: 6),
-                  ...[
-                    'pending',
-                    'in_progress',
-                    'completed',
-                    'cancelled',
-                  ].map(
-                    (st) => Padding(
-                      padding: const EdgeInsets.only(right: 6),
+                  for (final f in _filters)
+                    Padding(
+                      padding: const EdgeInsets.only(right: AppSpacing.xxs),
                       child: FilterChip(
-                        label: Text(st),
-                        selected: _filter == st,
+                        showCheckmark: false,
+                        selected: _filter == f.status,
+                        label: Text(f.label),
                         onSelected: (_) {
-                          setState(() => _filter = st);
-                          oc.loadOrders(status: st);
+                          setState(() => _filter = f.status);
+                          Get.find<OrderController>().loadOrders(status: f.status);
                         },
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -110,8 +119,9 @@ class _OrdersPageState extends State<OrdersPage> {
                 }
                 return AppEmptyState(
                   title: 'Chưa có đơn hàng',
-                  subtitle: 'Đơn từ báo giá và công việc sẽ hiển thị tại đây.',
-                  icon: Icons.receipt_long_outlined,
+                  subtitle:
+                      'Đơn từ báo giá và công việc sẽ hiển thị tại đây.',
+                  icon: LucideIcons.receipt,
                   actionLabel: 'Làm mới',
                   onAction: _reload,
                 );
@@ -119,30 +129,107 @@ class _OrdersPageState extends State<OrdersPage> {
               return RefreshIndicator(
                 onRefresh: _reload,
                 child: ListView.separated(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(AppSpacing.sm),
                   itemCount: oc.orders.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  separatorBuilder: (_, __) =>
+                      const SizedBox(height: AppSpacing.xs),
                   itemBuilder: (context, i) {
                     final o = oc.orders[i];
                     final id = o['id']?.toString() ?? '';
-                    final num = o['orderNumber']?.toString() ?? id;
+                    final code = o['orderNumber']?.toString() ?? id;
                     final title = o['title']?.toString() ?? 'Đơn hàng';
-                    final st = o['status']?.toString() ?? '';
+                    final status = o['status']?.toString();
                     final price = o['price'] ?? o['totalAmount'];
-                    return Card(
-                      child: ListTile(
-                        title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                        subtitle: Text('$num · $st'),
-                        trailing: Text('$price', style: const TextStyle(fontWeight: FontWeight.w600)),
-                        onTap: id.isEmpty
-                            ? null
-                            : () => Get.to<void>(() => OrderDetailPage(orderId: id)),
+                    final priceStr = price is num
+                        ? money.format(price.toInt())
+                        : (price?.toString() ?? '—');
+
+                    final info = statusInfo(status);
+
+                    return AppListCard(
+                      title: title,
+                      subtitle: 'Mã: ${code.isEmpty ? '—' : code}',
+                      leading: CircleAvatar(
+                        backgroundColor: scheme.primaryContainer,
+                        child: Icon(LucideIcons.receipt,
+                            color: scheme.primary, size: 18),
                       ),
+                      trailing: AppStatusBadge(
+                        label: info.label,
+                        tone: info.tone,
+                        dense: true,
+                      ),
+                      body: Row(
+                        children: [
+                          Icon(LucideIcons.dollarSign,
+                              size: 14, color: scheme.secondary),
+                          const SizedBox(width: 4),
+                          Text(
+                            '$priceStr đ',
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: scheme.onSurface,
+                                ),
+                          ),
+                        ],
+                      ),
+                      onTap: id.isEmpty
+                          ? null
+                          : () => Get.to<void>(
+                                () => OrderDetailPage(orderId: id),
+                              ),
                     );
                   },
                 ),
               );
             }),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusFilter {
+  const _StatusFilter(this.status, this.label);
+  final String? status;
+  final String label;
+}
+
+class _HeaderStat extends StatelessWidget {
+  const _HeaderStat({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xs + 2,
+        vertical: 6,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.85),
+              fontSize: 12,
+            ),
           ),
         ],
       ),

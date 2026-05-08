@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:mobile_app_doan/core/api_error_message.dart';
 import 'package:openapi/openapi.dart';
 
 class PostRepository {
@@ -47,36 +48,27 @@ class PostRepository {
 
       return response.data!;
     } on DioException catch (e) {
-      String errorMsg = "Không thể tạo bài viết";
-
       final responseData = e.response?.data;
       final statusCode = e.response?.statusCode;
-
       if (statusCode == 403 &&
           responseData is Map<String, dynamic> &&
           responseData['code'] == 'CONTENT_MODERATION_FAILED') {
-        errorMsg = responseData['details']?['userMessage'] ??
-            responseData['message'] ??
-            "Nội dung bài viết vi phạm quy định cộng đồng. Vui lòng chỉnh sửa và thử lại.";
-      } else if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.receiveTimeout ||
-          e.type == DioExceptionType.sendTimeout) {
-        errorMsg = "Kết nối timeout. Vui lòng kiểm tra kết nối mạng và thử lại.";
-      } else if (e.type == DioExceptionType.connectionError) {
-        errorMsg = "Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.";
-      } else if (responseData != null) {
-        if (responseData is Map) {
-          errorMsg = responseData['message'] ??
-              responseData['error'] ??
-              errorMsg;
-        } else if (responseData is String) {
-          errorMsg = responseData;
-        }
-      } else if (e.message != null && e.message!.isNotEmpty) {
-        errorMsg = e.message!;
+        final d = responseData['details'];
+        final userMsg = d is Map && d['userMessage'] is String
+            ? (d['userMessage'] as String).trim()
+            : '';
+        final apiMsg = responseData['message'] is String
+            ? (responseData['message'] as String).trim()
+            : '';
+        throw Exception(
+          userMsg.isNotEmpty
+              ? userMsg
+              : (apiMsg.isNotEmpty
+                  ? apiMsg
+                  : 'Nội dung bài viết vi phạm quy định cộng đồng. Vui lòng chỉnh sửa và thử lại.'),
+        );
       }
-
-      throw Exception(errorMsg);
+      throw Exception(describeApiError(e, fallback: 'Không thể tạo bài viết'));
     } catch (e) {
       rethrow;
     }
@@ -86,27 +78,7 @@ class PostRepository {
     try {
       await _postsApi.postControllerDeletePost(id: id);
     } on DioException catch (e) {
-      String errorMsg = "Không thể xóa bài viết";
-      
-      if (e.type == DioExceptionType.connectionTimeout || 
-          e.type == DioExceptionType.receiveTimeout ||
-          e.type == DioExceptionType.sendTimeout) {
-        errorMsg = "Kết nối timeout. Vui lòng kiểm tra kết nối mạng và thử lại.";
-      } else if (e.type == DioExceptionType.connectionError) {
-        errorMsg = "Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.";
-      } else if (e.response?.data != null) {
-        if (e.response!.data is Map) {
-          errorMsg = e.response!.data['message'] ?? 
-                     e.response!.data['error'] ?? 
-                     errorMsg;
-        } else if (e.response!.data is String) {
-          errorMsg = e.response!.data;
-        }
-      } else if (e.message != null && e.message!.isNotEmpty) {
-        errorMsg = e.message!;
-      }
-      
-      throw Exception(errorMsg);
+      throw Exception(describeApiError(e, fallback: 'Không thể xóa bài viết'));
     }
   }
 
@@ -123,27 +95,7 @@ class PostRepository {
       
       return res.data!;
     } on DioException catch (e) {
-      String errorMsg = "Không thể cập nhật bài viết";
-      
-      if (e.type == DioExceptionType.connectionTimeout || 
-          e.type == DioExceptionType.receiveTimeout ||
-          e.type == DioExceptionType.sendTimeout) {
-        errorMsg = "Kết nối timeout. Vui lòng kiểm tra kết nối mạng và thử lại.";
-      } else if (e.type == DioExceptionType.connectionError) {
-        errorMsg = "Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.";
-      } else if (e.response?.data != null) {
-        if (e.response!.data is Map) {
-          errorMsg = e.response!.data['message'] ?? 
-                     e.response!.data['error'] ?? 
-                     errorMsg;
-        } else if (e.response!.data is String) {
-          errorMsg = e.response!.data;
-        }
-      } else if (e.message != null && e.message!.isNotEmpty) {
-        errorMsg = e.message!;
-      }
-      
-      throw Exception(errorMsg);
+      throw Exception(describeApiError(e, fallback: 'Không thể cập nhật bài viết'));
     } catch (e) {
       rethrow;
     }
@@ -154,8 +106,7 @@ class PostRepository {
       final res = await _postsApi.postControllerGetPostById(id: id);
       return res.data!;
     } on DioException catch (e) {
-      final msg = e.response?.data?['message'] ?? "Get post failed";
-      throw Exception(msg);
+      throw Exception(describeApiError(e, fallback: 'Get post failed'));
     }
   }
 
@@ -163,8 +114,7 @@ class PostRepository {
     try {
       await _postsApi.postControllerClosePost(id: id);
     } on DioException catch (e) {
-      final msg = e.response?.data?['message'] ?? "Close post failed";
-      throw Exception(msg);
+      throw Exception(describeApiError(e, fallback: 'Close post failed'));
     }
   }
 }

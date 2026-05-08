@@ -1,11 +1,12 @@
 import 'package:dio/dio.dart';
+import 'package:mobile_app_doan/core/api_config.dart';
 import 'package:mobile_app_doan/utils/device_id.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 
 final dio = Dio(
   BaseOptions(
-    baseUrl: 'https://postmaxillary-variably-justa.ngrok-free.dev/api/v1',
+    baseUrl: kApiBaseUrlV1,
     connectTimeout: const Duration(seconds: 30),
     receiveTimeout: const Duration(seconds: 30),
     sendTimeout: const Duration(seconds: 30),
@@ -22,7 +23,7 @@ final dio = Dio(
 // 🔹 Dio riêng để refresh token — tránh vòng lặp interceptor
 final Dio _refreshDio = Dio(
   BaseOptions(
-    baseUrl: 'https://postmaxillary-variably-justa.ngrok-free.dev/api/v1',
+    baseUrl: kApiBaseUrlV1,
     connectTimeout: const Duration(seconds: 30),
     receiveTimeout: const Duration(seconds: 30),
     headers: {

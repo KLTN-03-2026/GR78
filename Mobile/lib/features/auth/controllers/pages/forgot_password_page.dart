@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:mobile_app_doan/core/api_error_message.dart';
 import 'package:mobile_app_doan/core/theme/app_spacing.dart';
 import 'package:mobile_app_doan/core/widgets/app_auth_shell.dart';
 import 'package:mobile_app_doan/core/widgets/app_primary_button.dart';
@@ -31,12 +32,13 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       if (mounted) {
         Get.snackbar(
           'Đã gửi',
-          'Nếu email đã đăng ký, bạn sẽ nhận link đặt lại mật khẩu.',
+          'Nếu email đã đăng ký, bạn sẽ nhận mã OTP qua email.',
         );
-        Get.offNamed('/login');
+        final email = Uri.encodeComponent(_email.text.trim());
+        Get.offNamed<void>('/reset-password-otp', parameters: {'email': email});
       }
     } catch (e) {
-      Get.snackbar('Lỗi', e.toString());
+      Get.snackbar('Lỗi', describeApiError(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -48,7 +50,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
     return AppAuthShell(
       title: 'Quên mật khẩu',
-      subtitle: 'Nhập email để nhận hướng dẫn đặt lại mật khẩu',
+      subtitle: 'Nhập email để nhận mã OTP đặt lại mật khẩu',
       leading: canPop
           ? IconButton(
               onPressed: () => Get.back<void>(),
@@ -61,7 +63,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Nhập email đã đăng ký. Server sẽ gửi link đặt lại mật khẩu (nếu email tồn tại).',
+              'Nhập email đã đăng ký. Hệ thống gửi mã OTP 6 số (nếu email tồn tại).',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: AppSpacing.md),
