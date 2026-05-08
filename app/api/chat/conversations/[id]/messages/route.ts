@@ -22,16 +22,32 @@ export async function GET(
 
     console.log('🔔 [Get Messages] Calling backend API...', id)
 
-    const response = await fetch(`${API_BASE_URL}/chat/conversations/${id}/messages`, {
-      method: 'GET',
-      headers: {
-        'Authorization': authHeader,
-        'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true'
-      }
-    })
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 seconds timeout
 
-    const data = await response.json()
+    try {
+      const response = await fetch(`${API_BASE_URL}/chat/conversations/${id}/messages`, {
+        method: 'GET',
+        signal: controller.signal,
+        headers: {
+          'Authorization': authHeader,
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
+        }
+      })
+
+    // Parse response
+    let data
+    try {
+      const text = await response.text()
+      clearTimeout(timeoutId)
+      console.log('🔔 [Get Messages] Raw response text:', text.substring(0, 500))
+      data = JSON.parse(text)
+    } catch (parseError) {
+      clearTimeout(timeoutId)
+      console.error('❌ [Get Messages] JSON parse error:', parseError)
+      throw new Error('Failed to parse response as JSON')
+    }
     
     console.log('🔔 [Get Messages] Response:', data)
 
@@ -43,11 +59,52 @@ export async function GET(
       )
     }
 
-    return NextResponse.json(data, { status: 200 })
+    // ⚠️ FIX: Handle various response formats from backend
+    let finalData = data
+    
+    // Nếu backend trả về { data: [...] }
+    if (data && !Array.isArray(data) && data.data && Array.isArray(data.data)) {
+      console.log('🔄 [Get Messages] Converting { data: [...] } to array')
+      finalData = data.data
+    }
+    // Nếu backend trả về { messages: [...] }
+    else if (data && !Array.isArray(data) && data.messages && Array.isArray(data.messages)) {
+      console.log('🔄 [Get Messages] Converting { messages: [...] } to array')
+      finalData = data.messages
+    }
+    // Nếu là array hoặc empty array
+    else if (Array.isArray(data)) {
+      console.log('✅ [Get Messages] Backend trả về array trực tiếp')
+      finalData = data
+    }
+    // Nếu là object nhưng không có key data/messages
+    else if (data && typeof data === 'object' && !Array.isArray(data)) {
+      console.warn('⚠️ [Get Messages] Backend trả về object không xác định, trả về empty array')
+      finalData = []
+    }
+
+    console.log('✅ [Get Messages] Success! Count:', Array.isArray(finalData) ? finalData.length : 0)
+    return NextResponse.json(finalData, { status: 200 })
+    } catch (fetchError) {
+      clearTimeout(timeoutId)
+      console.error('❌ [Get Messages] Fetch error:', fetchError)
+      
+      // Handle timeout
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        console.error('❌ [Get Messages] Request timeout after 10 seconds')
+        return NextResponse.json(
+          { message: 'Request timeout - backend server is not responding' },
+          { status: 504 }
+        )
+      }
+      
+      throw fetchError
+    }
   } catch (error) {
-    console.error('Error fetching messages:', error)
+    console.error('❌ [Get Messages] Error fetching messages:', error)
+    
     return NextResponse.json(
-      { message: 'Internal server error' },
+      { message: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
     )
   }

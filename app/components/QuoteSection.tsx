@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { quoteService, type Quote } from '@/lib/api/quote.service'
+import { orderService } from '@/lib/api/order.service'
 import { chatService } from '@/lib/api/chat.service'
 import { ProfileService } from '@/lib/api/profile.service'
 import { chatSocketService } from '@/lib/api/chat-socket.service'
@@ -99,39 +100,55 @@ export default function QuoteSection({ postId, isPostOwner }: QuoteSectionProps)
 
   const handleAcceptQuote = async (quoteId: string) => {
     try {
-      console.log('🎯 Accepting quote and opening chat:', quoteId)
+      console.log('✅ Accepting quote - Creating Order:', quoteId)
 
-      // Gọi API backend - tự động:
-      // 1. Chấp nhận quote
-      // 2. Tạo/mở conversation cho cả 2
-      // 3. Thay đổi status thành IN_CHAT
+      // Tạo Order ngay từ Quote
+      const result = await orderService.confirmFromQuote(quoteId)
+      console.log('✅ Order created successfully:', result)
+
+      alert(`✅ Đã tạo đơn hàng #${result.orderNumber}! Đợi thợ xác nhận làm.`)
+      setQuotes(prev => prev.filter(q => q.id !== quoteId))
+
+      // Refresh page sau 1s
+      setTimeout(() => window.location.reload(), 1000)
+    } catch (error: any) {
+      console.error('❌ Error accepting quote:', error)
+      alert(error.message || 'Không thể tạo đơn hàng')
+    }
+  }
+
+  const handleNegotiateQuote = async (quoteId: string) => {
+    try {
+      console.log('💬 Negotiating quote - Opening chat:', quoteId)
+
+      // Chuyển quote sang IN_CHAT status và mở conversation
       const result = await quoteService.acceptQuoteForChat(quoteId)
-      console.log('✅ Quote accepted, conversation created:', result)
+      console.log('✅ Quote accepted for chat, conversation created:', result)
 
-      // Kết nối socket nếu chưa kết nối
+      // Kết nối socket nếu chưa
       if (!chatSocketService.isConnected()) {
         console.log('🔌 Connecting chat socket...')
         chatSocketService.connect()
         await new Promise(resolve => setTimeout(resolve, 500))
       }
 
-      // Join conversation room để nhận real-time messages
+      // Join conversation room
       if (result.conversationId) {
         console.log('📥 Joining conversation room:', result.conversationId)
         await chatSocketService.joinConversation(result.conversationId)
       }
 
-      alert('Đã chấp nhận báo giá! Chat đã được mở.')
+      alert('✅ Đã mở chat trao đổi! Thợ có thể chào giá lại.')
       setQuotes(prev => prev.filter(q => q.id !== quoteId))
 
-      // Delay để chắc chắn socket đã join conversation
+      // Delay để chắc chắn socket đã join
       await new Promise(resolve => setTimeout(resolve, 800))
 
-      // Redirect đến trang chat
+      // Redirect tới chat
       router.push('/tin-nhan')
     } catch (error: any) {
-      console.error('❌ Error accepting quote:', error)
-      alert(error.message || 'Không thể chấp nhận báo giá')
+      console.error('❌ Error negotiating quote:', error)
+      alert(error.message || 'Không thể mở chat trao đổi')
     }
   }
 
@@ -276,8 +293,19 @@ export default function QuoteSection({ postId, isPostOwner }: QuoteSectionProps)
                         handleAcceptQuote(quote.id)
                       }}
                       className="flex-1 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition-colors"
+                      title="Tạo đơn hàng ngay"
                     >
                       ✓ Chấp nhận
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleNegotiateQuote(quote.id)
+                      }}
+                      className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors"
+                      title="Trao đổi thêm qua chat"
+                    >
+                      💬 Trao đổi
                     </button>
                     <button
                       onClick={(e) => {
@@ -285,6 +313,7 @@ export default function QuoteSection({ postId, isPostOwner }: QuoteSectionProps)
                         handleRejectQuote(quote.id)
                       }}
                       className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+                      title="Từ chối báo giá này"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

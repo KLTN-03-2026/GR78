@@ -288,21 +288,39 @@ export default function ChatQuoteFlow({
 
     // Place order
     const handlePlaceOrder = async () => {
-        if (!selectedQuoteData || !quoteId) return
+        if (!quoteId) {
+            setOrderError('Không tìm thấy ID báo giá')
+            return
+        }
 
         try {
             setOrderLoading(true)
             setOrderError('')
 
-            // 🔴 FIX: Call requestOrder API FIRST to change quote status to ORDER_REQUESTED
-            console.log('📋 Requesting order for quote:', quoteId)
-            await quoteService.requestOrder(quoteId)
-            console.log('✅ Quote status changed to ORDER_REQUESTED')
+            console.log('📋 Creating order for quote:', quoteId)
+            
+            // Lấy quote data từ API để có giá chính xác
+            let quoteData = selectedQuoteData
+            if (!quoteData || !quoteData.price) {
+                try {
+                    const fullQuote = await quoteService.getQuoteById(quoteId)
+                    quoteData = {
+                        price: fullQuote.price,
+                        description: fullQuote.description || selectedQuoteData?.description || ''
+                    }
+                } catch (err) {
+                    console.warn('Could not fetch full quote data, using existing:', err)
+                }
+            }
 
-            // Then send message notification
+            // Tạo order từ quote
+            const order = await orderService.confirmFromQuote(quoteId)
+            console.log('✅ Order created:', order.orderNumber)
+
+            // Gửi thông báo trong chat
             const payload = {
                 type: 'text' as const,
-                content: `Khách đặt đơn với giá: ${selectedQuoteData.price.toLocaleString()}đ`
+                content: `✅ Khách đã đặt đơn #${order.orderNumber} với giá: ${Number(quoteData.price).toLocaleString()}đ`
             }
 
             const response = await chatSocketService.sendMessage(conversationId, payload)
@@ -319,10 +337,10 @@ export default function ChatQuoteFlow({
             const msgs = await chatService.getMessages(conversationId)
             setMessages(Array.isArray(msgs) ? msgs : (msgs as any)?.messages || [])
 
-            alert('✅ Đặt đơn thành công! Vui lòng chờ thợ xác nhận.')
+            alert(`✅ Đặt đơn thành công! Đơn hàng #${order.orderNumber}. Vui lòng chờ thợ xác nhận.`)
         } catch (error: any) {
             console.error('❌ Place order error:', error)
-            setOrderError(error.message)
+            setOrderError(error?.message || 'Không thể đặt đơn')
         } finally {
             setOrderLoading(false)
         }
@@ -417,36 +435,54 @@ export default function ChatQuoteFlow({
                         return (
                             <div key={msg.id || Math.random()} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${isOwn ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'}`}>
-                                    {msg.content?.includes('Thợ chào giá') ? (
+                                    {msg.content?.includes('Thợ chào giá') || msg.content?.includes('💰') ? (
                                         <div className="space-y-2">
                                             <p className="text-sm font-semibold">💰 Báo giá</p>
-                                            <p className="text-sm">{msg.content}</p>
-                                            {!isOwn && currentUserRole === 'CUSTOMER' && (
+                                            <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                                            {!isOwn && currentUserRole === 'CUSTOMER' && !msg.content?.includes('Đã đặt đơn') && (
                                                 <button
-                                                    onClick={() => {
-                                                        const priceMatch = msg.content?.match(/(\d+)đ/)
-                                                        setSelectedQuoteData({
-                                                            price: priceMatch ? parseInt(priceMatch[1]) : 0,
-                                                            description: msg.content || ''
-                                                        })
-                                                        setShowPlaceOrderModal(true)
+                                                    onClick={async () => {
+                                                        try {
+                                                            // Lấy quote data từ API
+                                                            if (quoteId) {
+                                                                const fullQuote = await quoteService.getQuoteById(quoteId)
+                                                                setSelectedQuoteData({
+                                                                    price: fullQuote.price,
+                                                                    description: fullQuote.description || msg.content || ''
+                                                                })
+                                                            } else {
+                                                                // Fallback: try to extract from message
+                                                                let price = 0
+                                                                const priceMatch = msg.content?.match(/(\d+)(?:\s*đ|$)/)
+                                                                if (priceMatch) {
+                                                                    price = parseInt(priceMatch[1])
+                                                                }
+                                                                setSelectedQuoteData({
+                                                                    price: price,
+                                                                    description: msg.content || ''
+                                                                })
+                                                            }
+                                                            setShowPlaceOrderModal(true)
+                                                        } catch (err: any) {
+                                                            alert('❌ Lỗi lấy thông tin báo giá: ' + err.message)
+                                                        }
                                                     }}
-                                                    className="mt-2 text-xs bg-white text-blue-600 px-2 py-1 rounded hover:bg-blue-50"
+                                                    className="mt-2 text-xs bg-white text-blue-600 px-3 py-1.5 rounded font-medium hover:bg-blue-50 transition"
                                                 >
-                                                    Đặt đơn
+                                                    ✅ Đặt đơn
                                                 </button>
                                             )}
                                         </div>
-                                    ) : msg.content?.includes('Khách đặt đơn') || msg.content?.includes('xác nhận') ? (
+                                    ) : msg.content?.includes('Khách') && (msg.content?.includes('đặt đơn') || msg.content?.includes('xác nhận')) ? (
                                         <div className="space-y-2">
                                             <p className="text-sm font-semibold">📋 Đơn hàng</p>
-                                            <p className="text-sm">{msg.content}</p>
-                                            {!isOwn && currentUserRole === 'PROVIDER' && !msg.content?.includes('xác nhận') && (
+                                            <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                                            {!isOwn && currentUserRole === 'PROVIDER' && msg.content?.includes('đặt đơn') && !msg.content?.includes('xác nhận') && (
                                                 <button
                                                     onClick={() => setShowConfirmModal(true)}
-                                                    className="mt-2 text-xs bg-white text-green-600 px-2 py-1 rounded hover:bg-green-50"
+                                                    className="mt-2 text-xs bg-white text-green-600 px-3 py-1.5 rounded font-medium hover:bg-green-50 transition"
                                                 >
-                                                    Xác nhận nhận việc
+                                                    ✅ Xác nhận nhận việc
                                                 </button>
                                             )}
                                         </div>
@@ -626,27 +662,33 @@ function PlaceOrderModal({
     onConfirm: () => void
     onCancel: () => void
 }) {
+    const price = Number(quoteData?.price || 0)
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg w-full max-w-sm mx-4 p-6 shadow-xl">
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">📋 Đặt đơn</h2>
                 {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">{error}</div>}
                 <div className="bg-blue-50 p-4 rounded-lg mb-4">
-                    <p className="text-sm text-gray-600">{quoteData.description}</p>
-                    <p className="text-2xl font-bold text-blue-600 mt-2">{quoteData.price.toLocaleString()}đ</p>
+                    {quoteData?.description && (
+                        <p className="text-sm text-gray-600 mb-2">{quoteData.description}</p>
+                    )}
+                    <p className="text-2xl font-bold text-blue-600">{price.toLocaleString('vi-VN')}₫</p>
+                </div>
+                <div className="bg-yellow-50 p-3 rounded-lg mb-4 text-sm text-yellow-800 border border-yellow-200">
+                    ⚠️ Sau khi đặt đơn, bạn không thể hủy. Vui lòng xác nhận lại giá trước khi đặt.
                 </div>
                 <div className="flex gap-2">
                     <button
                         onClick={onCancel}
                         disabled={loading}
-                        className="flex-1 px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 disabled:bg-gray-200"
+                        className="flex-1 px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 disabled:bg-gray-200 font-medium"
                     >
                         Hủy
                     </button>
                     <button
                         onClick={onConfirm}
                         disabled={loading}
-                        className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-green-300"
+                        className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-green-300 font-medium"
                     >
                         {loading ? '⏳ Đang...' : '✅ Đặt đơn'}
                     </button>

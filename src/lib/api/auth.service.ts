@@ -381,4 +381,66 @@ export class AuthService {
       }, 150)
     }
   }
+
+  // Xác thực email với OTP
+  static async verifyEmail(email: string, otp: string): Promise<{ success: boolean; message: string }> {
+    try {
+      console.log('🔵 Verify Email Request:', { email, otp })
+
+      const response = await fetch('/api/auth/verify-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, otp }),
+      })
+
+      const responseData = await response.json()
+
+      console.log('✅ Verify Email Response:', responseData)
+
+      if (!response.ok || responseData?.success === false) {
+        throw new Error(responseData?.message || 'Xác thực email thất bại')
+      }
+
+      return {
+        success: true,
+        message: responseData?.message || 'Email xác thực thành công',
+      }
+    } catch (error: any) {
+      console.error('❌ Verify Email Error:', error)
+      throw new Error(error?.message || 'Xác thực email thất bại')
+    }
+  }
+
+  // Gửi lại OTP xác thực
+  static async resendVerification(email: string): Promise<{ success: boolean; message: string }> {
+    try {
+      console.log('🔵 Resend Verification Request:', { email })
+
+      const response = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      })
+
+      const responseData = await response.json()
+
+      console.log('✅ Resend Verification Response:', responseData)
+
+      if (!response.ok) {
+        throw new Error(responseData?.message || 'Gửi lại OTP thất bại')
+      }
+
+      return {
+        success: true,
+        message: responseData?.message || 'OTP đã được gửi lại',
+      }
+    } catch (error: any) {
+      console.error('❌ Resend Verification Error:', error)
+      throw new Error(error?.message || 'Gửi lại OTP thất bại')
+    }
+  }
 }

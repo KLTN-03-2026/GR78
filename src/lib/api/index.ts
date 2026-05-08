@@ -31,6 +31,11 @@ export interface RegisterDto {
    * @example "Password123!"
    */
   password: string;
+  /**
+   * User role
+   * @example "CUSTOMER"
+   */
+  role: string;
 }
 
 export interface RegisterResponseDataDto {

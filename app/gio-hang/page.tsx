@@ -7,6 +7,7 @@ import AppShell from '@/app/components/AppShell'
 import Header from '@/app/components/Header'
 import { AuthService } from '@/lib/api/auth.service'
 import { quoteService, type Quote, type QuoteWithRevisions } from '@/lib/api/quote.service'
+import { orderService } from '@/lib/api/order.service'
 import { PostService } from '@/lib/api/post.service'
 
 type QuoteWithPost = {
@@ -222,6 +223,24 @@ export default function GioHangPage() {
     }
   }
 
+  const handleCreateOrderFromQuote = async (quoteId: string, quotedPrice: number) => {
+    if (!confirm(`Bạn muốn đặt đơn hàng này với giá ${Number(quotedPrice).toLocaleString('vi-VN')}₫?`)) return
+
+    try {
+      setActionLoadingId(quoteId)
+      const order = await orderService.confirmFromQuote(quoteId)
+      alert(`Đã tạo đơn hàng #${order.orderNumber}. Chuyển đến đơn hàng?`)
+      if (confirm('Chuyển đến trang quản lý đơn hàng?')) {
+        router.push('/don-hang')
+      }
+      await loadMyQuotedPosts()
+    } catch (err: any) {
+      alert(err?.message || 'Không thể tạo đơn hàng')
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
   // Kiểm tra authentication và load danh sách bài đã chào giá
   useEffect(() => {
     if (!AuthService.isAuthenticated()) {
@@ -248,8 +267,15 @@ export default function GioHangPage() {
     <div className="min-h-screen bg-surface-lowest">
       <Header />
       <div className="border-b border-outline-variant/60 bg-surface shadow-app-bar">
-        <div className="app-container max-w-5xl py-app-sm">
-          <h1 className="text-xl font-bold text-foreground">Chào giá của tôi</h1>
+        <div className="app-container max-w-5xl py-app-sm flex items-center justify-between">
+          <h1 className="text-xl font-bold text-foreground">📤 Chào giá của tôi (Thợ)</h1>
+          <Link 
+            href="/gio-hang-nhan"
+            className="px-4 py-2 text-sm font-medium rounded-lg bg-teal-600 text-white hover:bg-teal-700 transition"
+            title="Xem chào giá nhận được từ thợ"
+          >
+            💰 Chào giá nhận được
+          </Link>
         </div>
       </div>
 
@@ -421,6 +447,17 @@ export default function GioHangPage() {
                         className="inline-flex items-center px-4 py-2 rounded-xl border border-rose-300 text-rose-700 hover:bg-rose-50 transition text-sm font-medium disabled:opacity-60"
                       >
                         {actionLoadingId === quote.id ? 'Đang xử lý...' : 'Hủy báo giá'}
+                      </button>
+                    )}
+
+                    {(quote.status === 'ACCEPTED' || quote.status === 'IN_CHAT') && (
+                      <button
+                        type="button"
+                        onClick={() => handleCreateOrderFromQuote(quote.id, quote.price)}
+                        disabled={actionLoadingId === quote.id}
+                        className="inline-flex items-center px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition text-sm font-medium disabled:opacity-60"
+                      >
+                        {actionLoadingId === quote.id ? '⏳ Đang đặt...' : '✅ Đặt đơn'}
                       </button>
                     )}
 

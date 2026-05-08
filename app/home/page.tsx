@@ -62,15 +62,28 @@ export default function HomePage() {
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [showSearchResults, setShowSearchResults] = useState(false)
   const [searchLoading, setSearchLoading] = useState(false)
+  const [searchError, setSearchError] = useState('')
 
   const mapUserWithAvatar = (rawUser: any) => {
     if (!rawUser) return null
-    const resolvedAvatar = normalizeImageUrl(rawUser.avatarUrl || rawUser.avatar)
+    // Lấy avatar từ profile nếu có (khớp với cấu trúc JSON lồng nhau)
+    const avatar = rawUser.profile?.avatar || rawUser.profile?.avatarUrl || rawUser.avatar || rawUser.avatarUrl
+    const resolvedAvatar = normalizeImageUrl(avatar)
+    
     return {
       ...rawUser,
       avatar: resolvedAvatar,
       avatarUrl: resolvedAvatar,
+      // Đảm bảo fullName có sẵn để hiển thị
+      fullName: rawUser.fullName || rawUser.profile?.fullName || rawUser.displayName,
     }
+  }
+
+  // Lấy avatar URL an toàn
+  const getAvatarUrl = (user: any): string => {
+    if (!user) return ''
+    const avatar = user.profile?.avatar || user.profile?.avatarUrl || user.avatar || user.avatarUrl
+    return normalizeImageUrl(avatar || '')
   }
 
   // Load số thông báo và tin nhắn chưa đọc
@@ -95,7 +108,7 @@ export default function HomePage() {
       const response = await PostService.getFeed({ limit: 20 })
 
       // Response type là FeedResponseDto: { data: PostResponseDto[], nextCursor?, total, hasMore }
-      if (response.data && Array.isArray(response.data)) {
+      if (response?.data && Array.isArray(response.data)) {
         setPosts(response.data)
       } else {
         console.warn('⚠️ Không có bài đăng nào')
@@ -112,6 +125,7 @@ export default function HomePage() {
   // Tìm kiếm profiles
   const handleSearch = async (query: string) => {
     setSearchQuery(query)
+    setSearchError('')
 
     if (!query.trim()) {
       setShowSearchResults(false)
@@ -132,9 +146,14 @@ export default function HomePage() {
       })
 
       setSearchResults(response.data || [])
+      
+      if (!response.data || response.data.length === 0) {
+        setSearchError('Không tìm thấy kết quả nào')
+      }
     } catch (error) {
       console.error('❌ Lỗi tìm kiếm:', error)
       setSearchResults([])
+      setSearchError(error instanceof Error ? error.message : 'Lỗi tìm kiếm')
     } finally {
       setSearchLoading(false)
     }
@@ -285,8 +304,6 @@ export default function HomePage() {
   ]
 
   // Không còn dữ liệu giả - chỉ dùng dữ liệu thật từ API
-
-  // Handlers cho post actions
   const handleClosePost = async (postId: string) => {
     if (!confirm('Bạn có chắc muốn đóng bài đăng này?')) return
 
@@ -419,289 +436,6 @@ export default function HomePage() {
     loadSavedStatuses(posts)
   }, [currentUser, posts])
 
-  // Dữ liệu mẫu cho bài đăng (dùng khi không có API)
-  const mockPosts = [
-    {
-      id: 1,
-      author: 'Nguyễn Thị Mai',
-      time: '8 giờ trước',
-      location: 'Hải Châu, Đà Nẵng',
-      title: 'Cần thợ sửa điện tại nhà nào. Mất điện toàn bộ đường Lê Duẩn. Ai sánh có thể đến ngay giúp em',
-      status: 'Đăng',
-      price: '200,000 - 300,000đ',
-      urgent: true,
-      comments: 8,
-      shares: 2,
-      likes: 8,
-      avatar: '😊',
-      avatarColor: 'from-yellow-400 to-orange-500',
-      commentList: [
-        {
-          id: 1,
-          author: 'Thợ Điện Minh',
-          avatar: 'Đ',
-          avatarBg: 'bg-blue-500',
-          badge: 'THỢ',
-          content: 'Chào chị, e chuyên sửa điện dân dụng 2 năm. Giờ nay có sánh, có thể kiểm tra và sửa được...',
-          time: '1 giờ trước',
-          likes: 8
-        },
-        {
-          id: 2,
-          author: 'Điện Lạnh Phát',
-          avatar: 'Đ',
-          avatarBg: 'bg-green-500',
-          badge: 'THỢ',
-          content: 'Em nhận sửa chữa điện tại nhà. Có kinh nghiệm...',
-          time: '2 giờ trước',
-          likes: 5
-        }
-      ]
-    },
-    {
-      id: 2,
-      author: 'Trần Văn Hùng',
-      time: '3 giờ trước',
-      location: 'Thanh Khê, Đà Nẵng',
-      title: 'Cần thợ sửa ống nước bị rò rỉ gấp. Nước chảy từ tầng 2 xuống tầng 1. Nhà đang ngập nước, cần người đến ngay',
-      status: 'Đăng',
-      price: '150,000 - 250,000đ',
-      urgent: true,
-      comments: 12,
-      shares: 1,
-      likes: 15,
-      avatar: '👨‍🔧',
-      avatarColor: 'from-blue-400 to-blue-600',
-      commentList: [
-        {
-          id: 1,
-          author: 'Thợ Nước Toàn',
-          avatar: 'N',
-          avatarBg: 'bg-blue-600',
-          badge: 'THỢ',
-          content: 'Anh ơi, em là thợ nước chuyên nghiệp 5 năm kinh nghiệm. Giờ này em rảnh, có thể qua ngay ạ!',
-          time: '2 giờ trước',
-          likes: 10
-        }
-      ]
-    },
-    {
-      id: 3,
-      author: 'Lê Thị Hoa',
-      time: '5 giờ trước',
-      location: 'Sơn Trà, Đà Nẵng',
-      title: 'Tìm thợ làm tủ bếp theo yêu cầu. Em có bản thiết kế sẵn rồi, cần thợ tư vấn và báo giá',
-      status: 'Đăng',
-      price: 'Thương lượng',
-      urgent: false,
-      comments: 6,
-      shares: 3,
-      likes: 12,
-      avatar: '🏠',
-      avatarColor: 'from-pink-400 to-pink-600',
-      commentList: [
-        {
-          id: 1,
-          author: 'Mộc Tâm',
-          avatar: 'M',
-          avatarBg: 'bg-yellow-600',
-          badge: 'THỢ',
-          content: 'Chào chị, em chuyên làm tủ bếp và nội thất gỗ. Có thể qua xem bản vẽ và báo giá cho chị ạ',
-          time: '4 giờ trước',
-          likes: 7
-        }
-      ]
-    },
-    {
-      id: 4,
-      author: 'Phạm Minh Tuấn',
-      time: '6 giờ trước',
-      location: 'Ngũ Hành Sơn, Đà Nẵng',
-      title: 'Máy lạnh không lạnh, có tiếng kêu lạ. Cần thợ qua kiểm tra và sửa chữa. Máy Daikin 1.5HP dùng được 3 năm',
-      status: 'Đăng',
-      price: '200,000 - 400,000đ',
-      urgent: false,
-      comments: 9,
-      shares: 2,
-      likes: 10,
-      avatar: '❄️',
-      avatarColor: 'from-cyan-400 to-blue-500',
-      commentList: [
-        {
-          id: 1,
-          author: 'Điện Lạnh Hưng',
-          avatar: 'H',
-          avatarBg: 'bg-cyan-600',
-          badge: 'THỢ',
-          content: 'Anh cho em xin địa chỉ, em qua kiểm tra miễn phí. Chuyên sửa máy lạnh các hãng',
-          time: '5 giờ trước',
-          likes: 6
-        }
-      ]
-    },
-    {
-      id: 5,
-      author: 'Võ Thị Lan',
-      time: '1 ngày trước',
-      location: 'Cẩm Lệ, Đà Nẵng',
-      title: 'Cần người vệ sinh nhà cửa tổng vệ sinh cuối năm. Nhà 2 tầng khoảng 120m2, cần lau dọn kỹ',
-      status: 'Đang thực hiện',
-      price: '500,000 - 700,000đ',
-      urgent: false,
-      comments: 15,
-      shares: 5,
-      likes: 20,
-      avatar: '🧹',
-      avatarColor: 'from-green-400 to-green-600',
-      commentList: [
-        {
-          id: 1,
-          author: 'Vệ Sinh Lan Anh',
-          avatar: 'L',
-          avatarBg: 'bg-green-600',
-          badge: 'THỢ',
-          content: 'Chị ơi, em nhận vệ sinh tổng vệ sinh nhà cửa, có đội ngũ 3 người làm nhanh và sạch ạ',
-          time: '20 giờ trước',
-          likes: 12
-        }
-      ]
-    },
-    {
-      id: 6,
-      author: 'Nguyễn Văn Bình',
-      time: '1 ngày trước',
-      location: 'Liên Chiểu, Đà Nẵng',
-      title: 'Sửa cửa cuốn bị kẹt không lên xuống được. Cần thợ có kinh nghiệm đến sửa',
-      status: 'Hoàn thành',
-      price: '300,000đ',
-      urgent: false,
-      comments: 4,
-      shares: 1,
-      likes: 8,
-      avatar: '🚪',
-      avatarColor: 'from-gray-400 to-gray-600',
-      commentList: []
-    },
-    {
-      id: 7,
-      author: 'Hoàng Thị Thu',
-      time: '2 ngày trước',
-      location: 'Hải Châu, Đà Nẵng',
-      title: 'Tìm thợ sơn nhà trong và ngoài. Nhà 3 tầng, cần sơn lại toàn bộ. Ai có kinh nghiệm inbox báo giá nhé',
-      status: 'Đăng',
-      price: 'Thương lượng',
-      urgent: false,
-      comments: 18,
-      shares: 8,
-      likes: 25,
-      avatar: '🎨',
-      avatarColor: 'from-purple-400 to-purple-600',
-      commentList: [
-        {
-          id: 1,
-          author: 'Thợ Sơn Minh',
-          avatar: 'S',
-          avatarBg: 'bg-purple-600',
-          badge: 'THỢ',
-          content: 'Chị ơi em nhận sơn nhà, có đội thợ 5 người, làm nhanh và đẹp. Em qua xem nhà và báo giá cho chị nhé',
-          time: '1 ngày trước',
-          likes: 15
-        },
-        {
-          id: 2,
-          author: 'Sơn Đẹp Pro',
-          avatar: 'P',
-          avatarBg: 'bg-indigo-600',
-          badge: 'THỢ',
-          content: 'Em chuyên sơn nhà, sơn epoxy. Bảo hành 2 năm ạ',
-          time: '1 ngày trước',
-          likes: 8
-        }
-      ]
-    },
-    {
-      id: 8,
-      author: 'Đỗ Minh Châu',
-      time: '2 ngày trước',
-      location: 'Thanh Khê, Đà Nẵng',
-      title: 'Cần thợ lắp camera an ninh cho cửa hàng. Cần lắp 4 camera, có hệ thống lưu trữ',
-      status: 'Đăng',
-      price: '2,000,000 - 3,000,000đ',
-      urgent: true,
-      comments: 11,
-      shares: 3,
-      likes: 14,
-      avatar: '📹',
-      avatarColor: 'from-red-400 to-red-600',
-      commentList: [
-        {
-          id: 1,
-          author: 'Kỹ Thuật Bảo An',
-          avatar: 'K',
-          avatarBg: 'bg-red-600',
-          badge: 'THỢ',
-          content: 'Anh ơi, em chuyên lắp đặt camera giám sát, có nhiều gói giá khác nhau. Em qua khảo sát và tư vấn miễn phí ạ',
-          time: '1 ngày trước',
-          likes: 9
-        }
-      ]
-    },
-    {
-      id: 9,
-      author: 'Trương Văn Nam',
-      time: '3 ngày trước',
-      location: 'Sơn Trà, Đà Nẵng',
-      title: 'Bồn cầu bị tắc nghẽn, nước không chảy. Cần thợ thông tắc bồn cầu gấp',
-      status: 'Hoàn thành',
-      price: '150,000đ',
-      urgent: true,
-      comments: 7,
-      shares: 1,
-      likes: 9,
-      avatar: '🚽',
-      avatarColor: 'from-teal-400 to-teal-600',
-      commentList: [
-        {
-          id: 1,
-          author: 'Thông Tắc 24/7',
-          avatar: 'T',
-          avatarBg: 'bg-teal-600',
-          badge: 'THỢ',
-          content: 'Em nhận thông tắc bồn cầu, thông cống, hút bể phốt. Bảo hành 6 tháng',
-          time: '3 ngày trước',
-          likes: 5
-        }
-      ]
-    },
-    {
-      id: 10,
-      author: 'Lý Thị Nga',
-      time: '3 ngày trước',
-      location: 'Ngũ Hành Sơn, Đà Nẵng',
-      title: 'Cần thợ làm cửa nhôm kính cho ban công. Diện tích khoảng 15m2, cần tư vấn loại kính tốt',
-      status: 'Đăng',
-      price: 'Thương lượng',
-      urgent: false,
-      comments: 13,
-      shares: 4,
-      likes: 18,
-      avatar: '🪟',
-      avatarColor: 'from-sky-400 to-sky-600',
-      commentList: [
-        {
-          id: 1,
-          author: 'Nhôm Kính Phát Đạt',
-          avatar: 'N',
-          avatarBg: 'bg-sky-600',
-          badge: 'THỢ',
-          content: 'Chị ơi, em chuyên làm cửa nhôm kính các loại. Em qua đo đạc và báo giá cho chị ạ',
-          time: '2 ngày trước',
-          likes: 11
-        }
-      ]
-    }
-  ]
-
   // Helper function để render avatar
   const renderAvatar = (size: 'small' | 'medium' | 'large' = 'medium') => {
     const sizeClasses = {
@@ -711,7 +445,7 @@ export default function HomePage() {
     }
     const className = `${sizeClasses[size]} rounded-full flex items-center justify-center`
 
-    const avatarUrl = normalizeImageUrl(currentUser?.avatar || currentUser?.avatarUrl)
+    const avatarUrl = getAvatarUrl(currentUser)
 
     if (avatarUrl && !avatarLoadError) {
       return (
@@ -726,7 +460,7 @@ export default function HomePage() {
 
     return (
       <div className={`${className} bg-blue-500 text-white font-semibold`}>
-        {currentUser?.fullName?.charAt(0).toUpperCase() || 'U'}
+        {(currentUser?.fullName?.charAt(0) || 'U').toUpperCase()}
       </div>
     )
   }
@@ -1128,6 +862,71 @@ export default function HomePage() {
                 </div>
               </div>
 
+              {/* Search Results */}
+              {showSearchResults && (
+                <div className="bg-white/85 backdrop-blur rounded-2xl border border-white/80 shadow-xl shadow-slate-900/5 mb-5 overflow-hidden animate-fade-in">
+                  <div className="p-4 border-b border-slate-200">
+                    <h3 className="font-semibold text-slate-800">Kết quả tìm kiếm cho "{searchQuery}"</h3>
+                  </div>
+                  {searchLoading ? (
+                    <div className="p-8 text-center">
+                      <div className="inline-flex items-center justify-center w-10 h-10 rounded-full border-2 border-slate-300 border-t-slate-700 animate-spin"></div>
+                      <p className="mt-3 text-slate-500">Đang tìm kiếm...</p>
+                    </div>
+                  ) : searchError ? (
+                    <div className="p-6 text-center">
+                      <svg className="w-12 h-12 text-slate-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10a4 4 0 018 0m-3-3v13" />
+                      </svg>
+                      <p className="text-sm text-slate-600">{searchError}</p>
+                    </div>
+                  ) : searchResults.length > 0 ? (
+                    <div className="divide-y divide-slate-200">
+                      {searchResults.map((result) => (
+                        <a
+                          key={result.id}
+                          href={result.accountType === 'WORKER' ? `/profile/${result.id}` : `#`}
+                          className="p-4 hover:bg-slate-50 transition flex items-center space-x-3"
+                        >
+                          {/* Avatar */}
+                          <div className="flex-shrink-0">
+                            {result.avatar ? (
+                              <img
+                                src={normalizeImageUrl(result.avatar)}
+                                alt={result.fullName}
+                                className="w-12 h-12 rounded-full object-cover"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement
+                                  target.style.display = 'none'
+                                }}
+                              />
+                            ) : (
+                              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold">
+                                {(result.fullName || 'U').charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-slate-800 truncate">{result.fullName}</p>
+                            <p className="text-sm text-slate-500 truncate">
+                              {result.accountType === 'WORKER' ? `⭐ ${result.rating || 0}` : `📍 ${result.location || 'Đà Nẵng'}`}
+                            </p>
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-6 text-center">
+                      <svg className="w-12 h-12 text-slate-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                      <p className="text-sm text-slate-600">Không tìm thấy kết quả phù hợp</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Posts */}
               {loadingPosts ? (
                 <>
@@ -1193,63 +992,29 @@ export default function HomePage() {
                             {/* Avatar - Luôn ở bên trái */}
                             <div className="flex-shrink-0">
                               {(() => {
-                                let avatarUrl: string | null = null;
+                                const avatarUrl = getAvatarUrl(isMyPost ? currentUser : postAuthor)
+                                const name = (postAuthor?.fullName || post.customer?.fullName || currentUser?.fullName || 'U')
 
-                                if (isMyPost) {
-                                  // Nếu là bài của mình, ưu tiên: currentUser.avatar > currentUser.avatarUrl > localStorage
-                                  avatarUrl = currentUser?.avatar || currentUser?.avatarUrl;
-
-                                  // Nếu không có, kiểm tra localStorage
-                                  if (!avatarUrl && currentUser?.id && typeof window !== 'undefined') {
-                                    const avatarKey = `user_avatar_${currentUser.id}`;
-                                    const savedAvatar = localStorage.getItem(avatarKey);
-                                    if (savedAvatar) {
-                                      avatarUrl = savedAvatar;
-                                    }
-                                  }
-                                } else {
-                                  // Nếu là bài của người khác
-                                  avatarUrl = post.customer?.avatarUrl || postAuthor?.avatarUrl;
-
-                                  // Kiểm tra localStorage cho customer
-                                  if (!avatarUrl && post.customerId && typeof window !== 'undefined') {
-                                    const avatarKey = `user_avatar_${post.customerId}`;
-                                    const savedAvatar = localStorage.getItem(avatarKey);
-                                    if (savedAvatar) {
-                                      avatarUrl = savedAvatar;
-                                    }
-                                  }
-                                }
-
-                                const resolvedAvatar = avatarUrl ? normalizeImageUrl(avatarUrl) : ''
-                                if (resolvedAvatar) {
+                                if (avatarUrl) {
                                   return (
                                     <img
-                                      src={resolvedAvatar}
-                                      alt="Avatar"
+                                      src={avatarUrl}
+                                      alt={name}
                                       className="w-10 h-10 rounded-full object-cover"
                                       onError={(e) => {
-                                        // Fallback nếu ảnh lỗi
-                                        const target = e.target as HTMLImageElement;
-                                        target.style.display = 'none';
-                                        const parent = target.parentElement;
-                                        if (parent) {
-                                          const fallback = document.createElement('div');
-                                          fallback.className = 'w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold';
-                                          fallback.textContent = (postAuthor?.fullName || post.customer?.fullName || currentUser?.fullName || 'U').charAt(0).toUpperCase();
-                                          parent.appendChild(fallback);
-                                        }
+                                        const target = e.target as HTMLImageElement
+                                        target.src = '' // Clear src to show fallback div
                                       }}
                                     />
-                                  );
+                                  )
                                 }
 
                                 // Fallback: hiển thị chữ cái đầu
                                 return (
                                   <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
-                                    {(postAuthor?.fullName || post.customer?.fullName || currentUser?.fullName || 'U').charAt(0).toUpperCase()}
+                                    {name.charAt(0).toUpperCase()}
                                   </div>
-                                );
+                                )
                               })()}
                             </div>
                             {/* Tên và thông tin - Ở bên phải */}
@@ -1523,4 +1288,3 @@ export default function HomePage() {
     </AppShell>
   )
 }
-
