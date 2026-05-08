@@ -270,7 +270,6 @@ export default function ThongBaoPage() {
     console.log('🔍 Message:', notification.message)
     console.log('🔍 Data object:', (notification as any).data)
     console.log('🔍 Metadata object:', (notification as any).metadata)
-    console.log('🔍 ActionUrl object:', (notification as any).actionUrl)
 
     // Đánh dấu đã đọc
     if (!notification.isRead) {
@@ -279,36 +278,22 @@ export default function ThongBaoPage() {
 
     // Backend gửi data trong field "metadata", KHÔNG phải "data"
     const metadata = (notification as any).metadata || (notification as any).data
-    const actionUrl = String((notification as any).actionUrl || '').trim()
 
     let postId = null
 
-    // ✅ Cách 1: Lấy từ metadata
     if (metadata) {
       console.log('🔍 Found metadata/data:', metadata)
 
       // Lấy postId từ metadata
       postId = metadata.postId || metadata.post_id || metadata.postID
 
-      console.log('🔍 Extracted postId from metadata:', postId)
+      console.log('🔍 Extracted postId:', postId)
     } else {
       console.warn('⚠️ notification.metadata và notification.data đều null/undefined')
     }
 
-    // ✅ Cách 2: Fallback - Parse từ actionUrl (format: /posts/{postId}/quotes)
-    if (!postId && actionUrl) {
-      console.log('🔍 Trying to extract postId from actionUrl:', actionUrl)
-      const match = actionUrl.match(/\/posts\/([^/]+)/)
-      if (match && match[1]) {
-        postId = match[1]
-        console.log('🔍 Extracted postId from actionUrl:', postId)
-      }
-    }
-
     if (!postId) {
       console.error('❌ KHÔNG TÌM THẤY postId trong notification')
-      console.error('   - metadata:', metadata)
-      console.error('   - actionUrl:', actionUrl)
       alert(
         '⚠️ Thông báo thiếu thông tin bài đăng.\n\n' +
         'Vui lòng vào "Bài đăng của tôi" để xem tất cả báo giá.'
