@@ -23,7 +23,13 @@ export async function POST(
     }
 
     const { id } = params
-    const body = await request.json()
+    let body: Record<string, unknown> = {}
+    try {
+      const text = await request.text()
+      if (text.trim()) body = JSON.parse(text) as Record<string, unknown>
+    } catch {
+      body = {}
+    }
 
     const response = await fetch(`${API_BASE_URL}/quotes/${id}/request-order`, {
       method: 'POST',

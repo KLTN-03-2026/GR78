@@ -915,7 +915,10 @@ export default function HomePage() {
               {(() => {
                 const userRole = currentUser?.accountType || currentUser?.role
                 const isCustomer = userRole === 'CUSTOMER' || userRole === 'customer'
-                const isWorker = userRole === 'WORKER' || userRole === 'provider'
+                const isWorker =
+                  userRole === 'WORKER' ||
+                  userRole === 'PROVIDER' ||
+                  userRole === 'provider'
 
                 return (
                   <>
@@ -960,6 +963,13 @@ export default function HomePage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                           </svg>
                           <span className="text-sm">Chào giá của tôi</span>
+                        </Link>
+
+                        <Link href="/danh-gia-ve-toi" className="flex items-center space-x-3 px-3 py-2.5 rounded-xl hover:bg-rose-50/80 hover:shadow-md text-slate-700 transition-all duration-200">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                          </svg>
+                          <span className="text-sm">Đánh giá về tôi</span>
                         </Link>
 
                         <Link href="/lich-su" className="flex items-center space-x-3 px-3 py-2.5 rounded-xl hover:bg-rose-50/80 hover:shadow-md text-slate-700 transition-all duration-200">
@@ -1043,9 +1053,32 @@ export default function HomePage() {
                 <div className="rounded-2xl border border-white/80 bg-white/80 backdrop-blur p-3 shadow-lg shadow-slate-900/5">
                   <div className="flex items-center gap-2 overflow-x-auto">
                     <Link href="/profile" className="shrink-0 px-3 py-1.5 rounded-full bg-teal-600 text-white text-sm font-medium">Cá nhân</Link>
-                    <Link href="/bai-dang-cua-toi" className="shrink-0 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm">Bài đăng</Link>
-                    <Link href="/lich-su" className="shrink-0 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm">Lịch sử</Link>
-                    <Link href="/yeu-thich" className="shrink-0 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm">Yêu thích</Link>
+                    {(() => {
+                      const userRole = currentUser?.accountType || currentUser?.role
+                      const isCustomer = userRole === 'CUSTOMER' || userRole === 'customer'
+                      const isWorker =
+                        userRole === 'WORKER' ||
+                        userRole === 'PROVIDER' ||
+                        userRole === 'provider'
+                      if (isWorker) {
+                        return (
+                          <>
+                            <Link href="/gio-hang" className="shrink-0 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm">Chào giá</Link>
+                            <Link href="/danh-gia-ve-toi" className="shrink-0 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm">Đánh giá</Link>
+                            <Link href="/lich-su" className="shrink-0 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm">Lịch sử</Link>
+                          </>
+                        )
+                      }
+                      return (
+                        <>
+                          {isCustomer && (
+                            <Link href="/bai-dang-cua-toi" className="shrink-0 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm">Bài đăng</Link>
+                          )}
+                          <Link href="/lich-su" className="shrink-0 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm">Lịch sử</Link>
+                          <Link href="/yeu-thich" className="shrink-0 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm">Yêu thích</Link>
+                        </>
+                      )
+                    })()}
                   </div>
                 </div>
               </div>
@@ -1175,7 +1208,10 @@ export default function HomePage() {
 
                   const postAuthor = isMyPost ? currentUser : post.customer
                   const userRole = currentUser?.accountType || currentUser?.role
-                  const isWorker = userRole === 'WORKER' || userRole === 'provider'
+                  const isWorker =
+                  userRole === 'WORKER' ||
+                  userRole === 'PROVIDER' ||
+                  userRole === 'provider'
                   const postId = String(post.id)
                   const isSaved = savedPostIds.has(postId)
                   const isSaving = savingPostIds.has(postId)

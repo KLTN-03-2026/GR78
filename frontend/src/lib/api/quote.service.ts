@@ -30,6 +30,17 @@ async function authenticatedFetch(url: string, options: RequestInit = {}): Promi
   return response
 }
 
+export type QuoteStatusKey =
+  | 'pending'
+  | 'accepted'
+  | 'rejected'
+  | 'cancelled'
+  | 'accepted_for_chat'
+  | 'revising'
+  | 'order_requested'
+  | 'confirmed'
+  | 'expired'
+
 export interface Quote {
   id: string
   postId: string
@@ -39,7 +50,8 @@ export interface Quote {
   price: number
   description: string
   estimatedDuration?: number  // Thời gian dự kiến tính bằng phút
-  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED' | 'IN_CHAT'
+  /** Backend dùng snake_case lowercase (vd: pending, accepted_for_chat) */
+  status: string
   createdAt: string
   updatedAt: string
 }
@@ -272,7 +284,7 @@ class QuoteService {
   async requestOrder(quoteId: string, revisionId?: string): Promise<{ orderId: string }> {
     const response = await authenticatedFetch(`/api/quotes/${quoteId}/request-order`, {
       method: 'POST',
-      body: JSON.stringify({ revisionId })
+      body: JSON.stringify(revisionId ? { revisionId } : {})
     })
     if (!response.ok) {
       const error = await response.json()

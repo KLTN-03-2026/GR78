@@ -22,8 +22,6 @@ export async function POST(
 
     const { id } = params
 
-    console.log('🔔 [Mark As Read] Calling backend API...', id)
-
     const response = await fetch(`${API_BASE_URL}/chat/conversations/${id}/read`, {
       method: 'POST',
       headers: {

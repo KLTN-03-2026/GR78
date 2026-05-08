@@ -66,6 +66,8 @@ export default function TinNhanPage() {
   const [conversationViewedRawUnread, setConversationViewedRawUnread] = useState<Record<string, number>>({})
   const selectedConversationRef = useRef<Conversation | null>(null)
   const currentUserRef = useRef<User | null>(null)
+  const loadConversationsRef = useRef<(() => Promise<void>) | null>(null)
+  const reloadConversationsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -254,6 +256,28 @@ export default function TinNhanPage() {
     return conversation
   }
 
+  const addUnreadForCurrentUser = (conversation: Conversation, user: User | null, amount: number): Conversation => {
+    if (!user) return conversation
+    const delta = Math.max(0, Math.floor(Number(amount) || 0))
+    if (delta === 0) return conversation
+
+    if (user.id === conversation.customerId || isCustomerRole(user)) {
+      return {
+        ...conversation,
+        customerUnreadCount: (Number(conversation.customerUnreadCount) || 0) + delta
+      }
+    }
+
+    if (user.id === conversation.providerId || isProviderRole(user)) {
+      return {
+        ...conversation,
+        providerUnreadCount: (Number(conversation.providerUnreadCount) || 0) + delta
+      }
+    }
+
+    return conversation
+  }
+
   useEffect(() => {
     selectedConversationRef.current = selectedConversation
   }, [selectedConversation])
@@ -354,9 +378,6 @@ export default function TinNhanPage() {
           icon: '/logo.png'
         })
       }
-
-      // Reload unread count
-      loadUnreadCount()
     })
 
     // Lắng nghe khi messages được đánh dấu đã đọc
@@ -371,10 +392,6 @@ export default function TinNhanPage() {
           readAt: new Date()
         })))
       }
-
-      // 🔥 FIX: Reload conversations to update unread counts
-      loadConversations()
-      loadUnreadCount()  // Cập nhật số badge ở icon tin nhắn trong Header
     })
 
     // Lắng nghe user typing
@@ -383,18 +400,32 @@ export default function TinNhanPage() {
       // TODO: Hiển thị "đang nhập..." trong UI
     })
 
-    // Lắng nghe unread count update
+    // unread_updated: user có thể không nằm trong room conversation (chỉ nhận qua user channel) — cập nhật local, tránh GET /conversations lặp lại
     const unsubscribeUnreadUpdated = chatSocketService.on('unread_updated', (data: { conversationId: string; increment: number }) => {
       console.log('🔢 Unread updated:', data)
-      loadUnreadCount()
+      setConversations(prev => {
+        const exists = prev.some(c => c.id === data.conversationId)
+        if (!exists) {
+          if (reloadConversationsDebounceRef.current) {
+            clearTimeout(reloadConversationsDebounceRef.current)
+          }
+          reloadConversationsDebounceRef.current = setTimeout(() => {
+            reloadConversationsDebounceRef.current = null
+            void loadConversationsRef.current?.()
+          }, 450)
+          return prev
+        }
+        const inc = Number(data.increment) > 0 ? Number(data.increment) : 1
+        return prev.map(conv =>
+          conv.id === data.conversationId
+            ? addUnreadForCurrentUser(conv, currentUserRef.current, inc)
+            : conv
+        )
+      })
     })
 
-    // Lắng nghe kết nối thành công
     const unsubscribeConnected = chatSocketService.on('connected', (data: { userId: string; unreadCount: number }) => {
       console.log('🔔 Chat connected:', data)
-      // Do not set unread from handshake payload because it can be stale.
-      // Always sync with backend source of truth.
-      void loadUnreadCount()
     })
 
     // Yêu cầu quyền browser notification
@@ -404,8 +435,11 @@ export default function TinNhanPage() {
       })
     }
 
-    // Cleanup
     return () => {
+      if (reloadConversationsDebounceRef.current) {
+        clearTimeout(reloadConversationsDebounceRef.current)
+        reloadConversationsDebounceRef.current = null
+      }
       unsubscribeNewMessage()
       unsubscribeMessagesRead()
       unsubscribeTyping()
@@ -414,37 +448,42 @@ export default function TinNhanPage() {
     }
   }, [])
 
-  // Load messages khi chọn conversation
+  // Load messages khi chọn conversation (chỉ theo id — tránh lặp vô hạn khi markAsRead tạo object conversation mới)
+  const selectedConversationId = selectedConversation?.id
+  const currentUserId = currentUser?.id
+
   useEffect(() => {
-    if (!selectedConversation) {
+    if (!selectedConversationId) {
       return
     }
 
-    if (!currentUser) {
+    const user = currentUserRef.current
+    if (!user?.id) {
       console.log('⏳ Waiting for currentUser to load...')
       return
     }
 
-    console.log('📨 Setting up conversation:', selectedConversation.id)
-    loadMessages(selectedConversation.id)
-    markAsRead(selectedConversation.id)
+    const conv = selectedConversationRef.current
+    if (!conv || conv.id !== selectedConversationId) {
+      return
+    }
 
-    // Determine otherUser ID based on current user role
-    const isCustomer = isCustomerRole(currentUser)
-    const otherUserId = isCustomer ? selectedConversation.providerId : selectedConversation.customerId
+    console.log('📨 Setting up conversation:', selectedConversationId)
+    loadMessages(selectedConversationId)
+    markAsRead(selectedConversationId)
+
+    const isCustomer = isCustomerRole(user)
+    const otherUserId = isCustomer ? conv.providerId : conv.customerId
 
     console.log('👤 Loading other user profile:', otherUserId)
-    // Load other user's profile
     loadOtherUserProfile(otherUserId)
 
-    // Join conversation room để nhận messages real-time
-    chatSocketService.joinConversation(selectedConversation.id)
+    chatSocketService.joinConversation(selectedConversationId)
 
-    // Cleanup: Leave room khi chuyển conversation
     return () => {
-      chatSocketService.leaveConversation(selectedConversation.id)
+      chatSocketService.leaveConversation(selectedConversationId)
     }
-  }, [selectedConversation, currentUser])
+  }, [selectedConversationId, currentUserId])
 
   // Load user profiles for all conversations whenever conversations or currentUser changes
   useEffect(() => {
@@ -549,6 +588,8 @@ export default function TinNhanPage() {
     }
   }
 
+  loadConversationsRef.current = loadConversations
+
   const loadMessages = async (conversationId: string) => {
     try {
       setMessagesLoading(true)
@@ -561,25 +602,6 @@ export default function TinNhanPage() {
       setMessages([])
     } finally {
       setMessagesLoading(false)
-    }
-  }
-
-  const loadUnreadCount = async () => {
-    try {
-      const userNow = currentUserRef.current
-      if (!userNow) {
-        return
-      }
-
-      const latestConversations = await chatService.getConversations()
-      const nextUnread = latestConversations.reduce((total, conv) => {
-        return total + getEffectiveUnreadCount(conv, userNow)
-      }, 0)
-
-      setUnreadCount(nextUnread)
-      emitUnreadCountChanged(nextUnread)
-    } catch (error) {
-      console.error('Error loading unread count:', error)
     }
   }
 
@@ -698,11 +720,6 @@ export default function TinNhanPage() {
         if (!prev || prev.id !== conversationId) return prev
         return clearUnreadForCurrentUser(prev, currentUserRef.current)
       })
-
-      await loadUnreadCount()
-
-      // Keep list in sync with server unread fields to avoid stale per-conversation badges
-      await loadConversations()
     } catch (error) {
       console.error('Error marking as read:', error)
     }

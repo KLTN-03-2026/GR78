@@ -115,19 +115,22 @@ export default function PostDetailPage() {
 
   useEffect(() => {
     if (!postId || !currentUser || !post) return
-    const userRole = currentUser?.accountType || currentUser?.role
-    const isWorker = userRole === 'WORKER' || userRole === 'provider'
+    const roleU = (currentUser?.accountType || currentUser?.role || '').toString().toUpperCase()
+    const isWorker = roleU === 'WORKER' || roleU === 'PROVIDER'
     const ownerId = post.customer?.id || post.customerId
-    const isOwner = ownerId && String(currentUser.id) === String(ownerId)
-    if (!isWorker || isOwner) return
+    const uid = String((currentUser as any).id ?? (currentUser as any).userId ?? '')
+    const viewerIsOwner = ownerId && uid === String(ownerId)
+    if (!isWorker || viewerIsOwner) return
 
     quoteService
       .getQuotesByPostId(postId)
       .then((list) => {
-        const uid = String(currentUser.id)
         const mine = list.some((q: { providerId?: string; status?: string }) => {
-          const st = String(q.status || '').toUpperCase()
-          return String(q.providerId) === uid && ['PENDING', 'IN_CHAT', 'ACCEPTED'].includes(st)
+          const st = String(q.status || '').toUpperCase().replace(/-/g, '_')
+          return (
+            String(q.providerId) === uid &&
+            ['PENDING', 'IN_CHAT', 'ACCEPTED', 'ACCEPTED_FOR_CHAT', 'REVISING'].includes(st)
+          )
         })
         setHasMyQuote(mine)
       })
@@ -173,8 +176,19 @@ export default function PostDetailPage() {
     }
   }
 
-  // Kiểm tra xem user có phải chủ bài đăng không
-  const isOwner = currentUser && post && currentUser.id === post.customerId
+  // Chủ bài: so khớp id (API có thể chỉ có customer.id, hoặc khác kiểu string)
+  const currentUserId = currentUser
+    ? String((currentUser as any).id ?? (currentUser as any).userId ?? (currentUser as any).sub ?? '')
+    : ''
+  const postOwnerId = post
+    ? String(post.customerId ?? post.customer?.id ?? '')
+    : ''
+  const isOwner = Boolean(currentUserId && postOwnerId && currentUserId === postOwnerId)
+
+  const userRoleUpper = (currentUser?.accountType || currentUser?.role || '')
+    .toString()
+    .toUpperCase()
+  const isWorkerRole = userRoleUpper === 'WORKER' || userRoleUpper === 'PROVIDER'
 
   // Format date
   const formatDate = (dateString: string) => {
@@ -390,15 +404,17 @@ export default function PostDetailPage() {
               {/* Quotes Section - Hiển thị danh sách chào giá thay cho Comments */}
               {/* Chỉ hiển thị cho khách hàng (không phải thợ) */}
               {(() => {
-                const userRole = currentUser?.accountType || currentUser?.role
-                const isWorker = userRole === 'WORKER' || userRole === 'provider'
+                if (isWorkerRole) return null
 
-                if (isWorker) return null
+                const customerIdForQuotes = String(
+                  post.customerId ?? post.customer?.id ?? (post.customer as { customerId?: string })?.customerId ?? ''
+                )
 
                 return (
                   <QuoteSection
                     postId={postId}
                     isPostOwner={isOwner}
+                    postCustomerId={customerIdForQuotes}
                   />
                 )
               })()}
@@ -442,12 +458,10 @@ export default function PostDetailPage() {
                   )}
 
                   {!isOwner && (() => {
-                    const userRole = currentUser?.accountType || currentUser?.role
-                    const isWorker = userRole === 'WORKER' || userRole === 'provider'
-                    const isCustomer = userRole === 'CUSTOMER' || userRole === 'customer'
+                    const isCustomerRole = userRoleUpper === 'CUSTOMER'
 
                     // Chỉ thợ mới có thể gửi báo giá, khách hàng không
-                    if (isCustomer) return null
+                    if (isCustomerRole) return null
 
                     if (hasMyQuote) {
                       return (

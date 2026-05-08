@@ -549,6 +549,14 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
                     <Link href={schedulePath} className={navTextClass(pathname.startsWith('/don-hang'))}>
                         Đơn hàng
                     </Link>
+                    {isWorker && (
+                        <Link
+                            href="/danh-gia-ve-toi"
+                            className={navTextClass(pathname.startsWith('/danh-gia-ve-toi'))}
+                        >
+                            Đánh giá
+                        </Link>
+                    )}
                 </nav>
 
                 {/* Search — desktop */}
@@ -703,9 +711,20 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
                                 <Link href="/profile" className="block px-4 py-2 text-sm text-foreground transition-colors hover:bg-brand-tint/70" onClick={() => setShowProfileMenu(false)}>
                                     👤 Trang cá nhân
                                 </Link>
-                                <Link href="/bai-dang-cua-toi" className="block px-4 py-2 text-sm text-foreground transition-colors hover:bg-brand-tint/70" onClick={() => setShowProfileMenu(false)}>
-                                    📝 Bài đăng của tôi
-                                </Link>
+                                {isWorker ? (
+                                    <>
+                                        <Link href="/gio-hang" className="block px-4 py-2 text-sm text-foreground transition-colors hover:bg-brand-tint/70" onClick={() => setShowProfileMenu(false)}>
+                                            💬 Chào giá của tôi
+                                        </Link>
+                                        <Link href="/danh-gia-ve-toi" className="block px-4 py-2 text-sm text-foreground transition-colors hover:bg-brand-tint/70" onClick={() => setShowProfileMenu(false)}>
+                                            ⭐ Đánh giá về tôi
+                                        </Link>
+                                    </>
+                                ) : (
+                                    <Link href="/bai-dang-cua-toi" className="block px-4 py-2 text-sm text-foreground transition-colors hover:bg-brand-tint/70" onClick={() => setShowProfileMenu(false)}>
+                                        📝 Bài đăng của tôi
+                                    </Link>
+                                )}
                                 <Link href="/da-luu" className="block px-4 py-2 text-sm text-foreground transition-colors hover:bg-brand-tint/70" onClick={() => setShowProfileMenu(false)}>
                                     💾 Đã lưu
                                 </Link>

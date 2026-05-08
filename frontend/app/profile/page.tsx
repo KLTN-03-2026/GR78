@@ -2,13 +2,26 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import Header from '@/app/components/Header'
 import AppShell from '@/app/components/AppShell'
+import ProviderReceivedReviewsPanel from '@/app/components/ProviderReceivedReviewsPanel'
 import { ProfileService, ProfileResponse, UpdateProfileDto, UpdateContactDto, ChangeDisplayNameDto } from '@/lib/api/profile-new.service'
 import { PostService } from '@/lib/api/post.service'
 import { AuthService } from '@/lib/api/auth.service'
 import { UserService } from '@/lib/api/user.service'
 import { resolveMediaUrl as normalizeImageUrl } from '@/lib/media-url'
+
+type ProfileContentTab =
+  | 'view'
+  | 'edit'
+  | 'contact'
+  | 'display-name'
+  | 'avatar'
+  | 'my-posts'
+  | 'my-quotes'
+  | 'provider-reviews'
+  | 'change-password'
 
 export default function Profile() {
   const router = useRouter()
@@ -16,7 +29,7 @@ export default function Profile() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [avatarLoadError, setAvatarLoadError] = useState(false)
-  const [activeTab, setActiveTab] = useState<'view' | 'edit' | 'contact' | 'display-name' | 'avatar' | 'my-posts' | 'change-password'>('view')
+  const [activeTab, setActiveTab] = useState<ProfileContentTab>('view')
   const [isSaving, setIsSaving] = useState(false)
 
   // My Posts states
@@ -48,6 +61,16 @@ export default function Profile() {
 
     loadProfile()
   }, [router])
+
+  useEffect(() => {
+    if (!profile) return
+    const r = (profile.role || '').toLowerCase()
+    setActiveTab((cur) => {
+      if (r === 'provider' && cur === 'my-posts') return 'view'
+      if (r === 'customer' && (cur === 'my-quotes' || cur === 'provider-reviews')) return 'view'
+      return cur
+    })
+  }, [profile])
 
   const loadProfile = async () => {
     try {
@@ -332,6 +355,23 @@ export default function Profile() {
     )
   }
 
+  const isProviderUser = (profile.role || '').toLowerCase() === 'provider'
+
+  const profileNavTabs: { key: ProfileContentTab; label: string }[] = [
+    { key: 'view', label: 'Xem hồ sơ' },
+    { key: 'edit', label: 'Sửa hồ sơ' },
+    { key: 'contact', label: 'Liên hệ' },
+    { key: 'display-name', label: 'Tên hiển thị' },
+    { key: 'avatar', label: 'Ảnh đại diện' },
+    ...(isProviderUser
+      ? [
+          { key: 'my-quotes' as const, label: 'Chào giá của tôi' },
+          { key: 'provider-reviews' as const, label: 'Đánh giá về tôi' },
+        ]
+      : [{ key: 'my-posts' as const, label: 'Bài đăng của tôi' }]),
+    { key: 'change-password', label: 'Đổi mật khẩu' },
+  ]
+
   return (
     <AppShell>
     <div className="flex min-h-screen flex-col bg-surface-lowest">
@@ -349,7 +389,11 @@ export default function Profile() {
               ← Quay lại
             </button>
             <h1 className="text-3xl font-bold text-gray-800">Hồ sơ của tôi</h1>
-            <p className="text-gray-600 mt-2">Quản lý thông tin tài khoản và bài đăng của bạn</p>
+            <p className="text-gray-600 mt-2">
+              {isProviderUser
+                ? 'Quản lý thông tin tài khoản, chào giá và đánh giá từ khách'
+                : 'Quản lý thông tin tài khoản và bài đăng của bạn'}
+            </p>
           </div>
         </div>
 
@@ -369,19 +413,11 @@ export default function Profile() {
           {/* Navigation Tabs */}
           <div className="bg-white rounded-lg shadow-sm mb-6">
             <div className="flex border-b overflow-x-auto">
-              {[
-                { key: 'view', label: 'Xem hồ sơ' },
-                { key: 'edit', label: 'Sửa hồ sơ' },
-                { key: 'contact', label: 'Liên hệ' },
-                { key: 'display-name', label: 'Tên hiển thị' },
-                { key: 'avatar', label: 'Ảnh đại diện' },
-                { key: 'change-password', label: 'Đổi mật khẩu' },
-                { key: 'my-posts', label: 'Bài đăng của tôi' },
-              ].map(tab => (
+              {profileNavTabs.map((tab) => (
                 <button
                   key={tab.key}
                   onClick={() => {
-                    setActiveTab(tab.key as any)
+                    setActiveTab(tab.key)
                     if (tab.key === 'my-posts' && !postsLoaded) {
                       loadMyPosts()
                     }
@@ -988,6 +1024,24 @@ export default function Profile() {
                   </div>
                 )}
               </div>
+            )}
+
+            {activeTab === 'my-quotes' && (
+              <div className="space-y-4 py-6 text-center">
+                <p className="text-gray-600 max-w-md mx-auto">
+                  Xem và chỉnh sửa các chào giá bạn đã gửi cho khách hàng trên từng bài đăng.
+                </p>
+                <Link
+                  href="/gio-hang"
+                  className="inline-block bg-cyan-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-cyan-700 transition"
+                >
+                  Mở chào giá của tôi
+                </Link>
+              </div>
+            )}
+
+            {activeTab === 'provider-reviews' && (
+              <ProviderReceivedReviewsPanel providerId={profile.id} compact />
             )}
           </div>
         </div>
