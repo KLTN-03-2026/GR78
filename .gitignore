@@ -1,0 +1,31 @@
+# macOS / Windows junk
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+
+# Thesis / docs binaries (keep notes in .md; store .docx outside repo or use Drive)
+_docs/**/*.docx
+**/~$*.docx
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Dependencies
+node_modules/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Build outputs
+dist/
+build/
+.dart_tool/
+.packages
+
+# Environment
+.env
+.env.local
