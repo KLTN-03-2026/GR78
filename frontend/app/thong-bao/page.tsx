@@ -262,6 +262,11 @@ export default function ThongBaoPage() {
     }
   }
 
+  const extractPostIdFromActionUrl = (actionUrl: string) => {
+    const match = actionUrl.match(/^\/posts\/([^/]+)(?:\/quotes)?(?:\/)?(?:\?.*)?$/)
+    return match?.[1] || null
+  }
+
   // Chuyển đến trang chi tiết bài đăng khi click vào thông báo chào giá
   const handleViewQuoteNotification = async (notification: Notification) => {
     console.log('=== CLICK NOTIFICATION ===')
@@ -278,8 +283,9 @@ export default function ThongBaoPage() {
 
     // Backend gửi data trong field "metadata", KHÔNG phải "data"
     const metadata = (notification as any).metadata || (notification as any).data
+    const actionUrl = String((notification as any).actionUrl || '').trim()
 
-    let postId = null
+    let postId: string | null = null
 
     if (metadata) {
       console.log('🔍 Found metadata/data:', metadata)
@@ -292,13 +298,17 @@ export default function ThongBaoPage() {
       console.warn('⚠️ notification.metadata và notification.data đều null/undefined')
     }
 
+    if (!postId && actionUrl) {
+      postId = extractPostIdFromActionUrl(actionUrl)
+      console.log('🔍 Extracted postId from actionUrl:', postId)
+    }
+
     if (!postId) {
       console.error('❌ KHÔNG TÌM THẤY postId trong notification')
       alert(
         '⚠️ Thông báo thiếu thông tin bài đăng.\n\n' +
-        'Vui lòng vào "Bài đăng của tôi" để xem tất cả báo giá.'
+        'Không thể mở đúng bài đăng từ thông báo này.'
       )
-      router.push('/bai-dang-cua-toi')
       return
     }
 

@@ -868,15 +868,15 @@ export default function TinNhanPage() {
 
   return (
     <AppShell>
-    <div className="flex h-screen flex-col bg-surface-lowest">
+    <div className="flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden bg-surface-lowest">
       {/* Header */}
       <Header currentUser={currentUser} />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Sidebar - Conversation List */}
-        <div className="w-full md:w-96 bg-white border-r flex flex-col">
+        <div className="w-full md:w-96 bg-white border-r flex h-full min-h-0 flex-col overflow-hidden">
           {/* Header */}
-          <div className="p-4 border-b">
+          <div className="sticky top-0 z-10 bg-white p-4 border-b">
             <div className="flex items-center gap-3 mb-4">
               <button
                 onClick={() => router.push('/home')}
@@ -932,7 +932,7 @@ export default function TinNhanPage() {
           </div>
 
           {/* Conversation List */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 min-h-0 overflow-y-auto">
             {loading ? (
               <div className="flex items-center justify-center h-full">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
@@ -976,11 +976,11 @@ export default function TinNhanPage() {
         </div>
 
         {/* Main Chat Area */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {selectedConversation ? (
             <>
               {/* Chat Header */}
-              <div className="bg-white border-b p-4 flex items-center justify-between">
+              <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white p-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-gray-300 overflow-hidden">
                     {otherUser?.avatar ? (
@@ -1100,6 +1100,7 @@ export default function TinNhanPage() {
       <ChatQuotePanel
         customerId={selectedConversation.customerId}
         providerId={selectedConversation.providerId}
+        quoteId={selectedConversation.quoteId}
         currentUserRole={isProviderRole(currentUser) ? 'PROVIDER' : 'CUSTOMER'}
         isOpen={showQuotePanel}
         onClose={() => setShowQuotePanel(false)}

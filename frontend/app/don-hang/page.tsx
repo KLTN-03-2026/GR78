@@ -115,7 +115,7 @@ export default function DonHangPage() {
 
     fetchOrders()
     fetchStats()
-  }, [router, statusFilter, roleFilter])
+  }, [router, statusFilter])
 
   const fetchOrders = async () => {
     try {
@@ -262,6 +262,13 @@ export default function DonHangPage() {
 
   const isOrderCustomer = (order: Order) =>
     Boolean(viewerUserId && String(order.customerId) === String(viewerUserId))
+
+  const displayedOrders =
+    roleFilter === 'customer'
+      ? orders.filter((order) => isOrderCustomer(order))
+      : roleFilter === 'provider'
+        ? orders.filter((order) => isOrderProvider(order))
+        : orders
 
   /** Đơn PENDING sau khi khách accept-quote-direct / request-order — thợ gọi confirm-from-quote */
   const handleProviderConfirmFromQuote = async (quoteId: string) => {
@@ -483,6 +490,14 @@ export default function DonHangPage() {
             >
               Hoàn thành
             </button>
+            <button
+              onClick={() => setStatusFilter('CANCELLED')}
+              className={`px-4 py-2 rounded-lg whitespace-nowrap ${
+                statusFilter === 'CANCELLED' ? 'bg-orange-600 text-white' : 'bg-gray-200 text-gray-700'
+              }`}
+            >
+              Đã hủy
+            </button>
           </div>
 
           <div className="flex space-x-2 mt-2">
@@ -625,7 +640,7 @@ export default function DonHangPage() {
             </div>
           )}
 
-          {orders.length === 0 ? (
+          {displayedOrders.length === 0 ? (
             <div className="bg-white rounded-lg shadow-sm p-8 text-center">
               <div className="text-6xl mb-4">📦</div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có đơn hàng</h3>
@@ -633,7 +648,7 @@ export default function DonHangPage() {
             </div>
           ) : (
             <div className="space-y-3">
-            {orders.map((order) => (
+            {displayedOrders.map((order) => (
               <div key={order.id} className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
                 <div className="p-4">
                   <div className="flex items-start justify-between mb-3">

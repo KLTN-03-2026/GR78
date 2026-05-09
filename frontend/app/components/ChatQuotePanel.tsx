@@ -45,6 +45,7 @@ interface PostQuoteGroup {
 export interface ChatQuotePanelProps {
   customerId: string
   providerId: string
+  quoteId?: string
   currentUserRole: 'CUSTOMER' | 'PROVIDER'
   isOpen: boolean
   onClose: () => void
@@ -378,6 +379,7 @@ function PostQuoteSection({
 export default function ChatQuotePanel({
   customerId,
   providerId,
+  quoteId,
   currentUserRole,
   isOpen,
   onClose,
@@ -397,6 +399,24 @@ export default function ChatQuotePanel({
     setFetchError('')
     try {
       const matched: PostQuoteGroup[] = []
+
+      if (quoteId) {
+        const detailed = await quoteService.getQuoteWithRevisions(quoteId)
+        const post = detailed.postId ? await PostService.getPostById(detailed.postId) : null
+        if (!Array.isArray((detailed as any).revisions)) {
+          (detailed as any).revisions = []
+        }
+
+        matched.push({
+          postId: detailed.postId || '',
+          postTitle: post?.title || 'Báo giá',
+          quoteId: detailed.id,
+          quote: detailed as unknown as QuoteDetail,
+        })
+
+        setGroups(matched)
+        return
+      }
 
       if (currentUserRole === 'PROVIDER') {
         const myQuotes = await quoteService.getMyQuotes()
