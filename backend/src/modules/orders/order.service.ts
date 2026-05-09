@@ -1,11 +1,8 @@
 import { ChatService } from '@/modules/chat/chat.service';
 import { NotificationEventService } from '@/modules/notifications/services/notification-event.service';
-import { PostCustomer } from '@/modules/posts/entities/post.entity';
 import { QuoteRevision } from '@/modules/quotes/entities/quote-revision.entity';
 import { Quote } from '@/modules/quotes/entities/quote.entity';
 import { QuoteStatus } from '@/modules/quotes/enums/quote-status.enum';
-import { QuoteRevisionService } from '@/modules/quotes/services/quote-revision.service';
-import { QuoteStatusService } from '@/modules/quotes/services/quote-status.service';
 import {
     BadRequestException,
     ForbiddenException,
@@ -25,14 +22,8 @@ export class OrderService {
     constructor(
         @InjectRepository(Order)
         private readonly orderRepo: Repository<Order>,
-        @InjectRepository(Quote)
-        private readonly quoteRepo: Repository<Quote>,
-        @InjectRepository(PostCustomer)
-        private readonly postRepo: Repository<PostCustomer>,
         private readonly notificationService: NotificationEventService,
         private readonly chatService: ChatService,
-        private readonly quoteStatusService: QuoteStatusService,
-        private readonly quoteRevisionService: QuoteRevisionService,
         private readonly dataSource: DataSource,
     ) { }
 
@@ -166,13 +157,18 @@ export class OrderService {
      *   → Activate it to IN_PROGRESS.
      *
      * Chat-negotiation flow: no pre-existing order.
-     *   → Create the order directly in IN_PROGRESS (existing behaviour).
+     *   → Create the order directly in IN_PROGRESS.
+     *
+     * All quote and revision mutations use the transaction manager to prevent
+     * deadlocks: the initial FOR UPDATE lock on the quote row would cause any
+     * UPDATE via the injected repo (a different DB connection) to block, which
+     * then dead-locks against the transaction that is waiting for that UPDATE.
      */
     async createOrderFromQuoteConfirmation(
         quoteId: string,
         providerId: string,
     ): Promise<Order> {
-        let postCleanupPayload: { postId: string; quoteId: string; post: PostCustomer } | null = null;
+        let isChatNegotiationPath = false;
 
         const order = await this.dataSource.transaction(async (manager) => {
             // Acquire a row-level lock without joins: PostgreSQL forbids FOR UPDATE
@@ -203,10 +199,13 @@ export class OrderService {
                 throw new ForbiddenException('You are not the provider of this quote');
             }
 
-            const existingOrder = await manager.findOne(Order, {
-                where: { quoteId },
-                lock: { mode: 'pessimistic_write' },
-            });
+            // Use QueryBuilder for the lock: findOne() loads eager relations (customer, provider)
+            // via LEFT JOINs, and PostgreSQL forbids FOR UPDATE on the nullable side of an outer join.
+            const existingOrder = await manager
+                .createQueryBuilder(Order, 'order')
+                .setLock('pessimistic_write')
+                .where('order.quoteId = :quoteId', { quoteId })
+                .getOne();
 
             // ── Direct-acceptance path: activate the pre-created PENDING order ──
             if (existingOrder) {
@@ -231,10 +230,6 @@ export class OrderService {
                 quote.confirmedAt = new Date();
                 await manager.save(Quote, quote);
 
-                if (quote.post && quote.postId) {
-                    postCleanupPayload = { postId: quote.postId, quoteId: quote.id, post: quote.post };
-                }
-
                 this.logger.log(
                     `Order ${activated.id} [IN_PROGRESS] activated by provider ${providerId} ` +
                     `(direct-acceptance flow, quote: ${quoteId})`,
@@ -244,7 +239,17 @@ export class OrderService {
             }
 
             // ── Chat-negotiation path: create the order from scratch ──
-            const currentRevision = await this.quoteRevisionService.getLatestRevision(quoteId);
+            isChatNegotiationPath = true;
+
+            // Use the revisions already loaded with the quote to avoid an extra
+            // injected-repo query inside this transaction.
+            const revisions = (quote.revisions ?? []).sort(
+                (a, b) => b.revisionNumber - a.revisionNumber,
+            );
+            const currentRevision = revisions[0];
+            if (!currentRevision) {
+                throw new NotFoundException(`No revision found for quote ${quoteId}`);
+            }
 
             if (currentRevision.usedForOrderId) {
                 throw new BadRequestException(
@@ -252,7 +257,12 @@ export class OrderService {
                 );
             }
 
-            await this.quoteStatusService.confirmOrder(quote);
+            // Update quote status through the transaction manager — using the injected
+            // repo here would attempt to UPDATE the row already locked FOR UPDATE on
+            // this same connection, causing a PostgreSQL deadlock.
+            quote.status = QuoteStatus.CONFIRMED;
+            quote.confirmedAt = new Date();
+            await manager.save(Quote, quote);
 
             const orderNumber = await this.generateOrderNumber(manager);
             const price = parseFloat(quote.price.toString());
@@ -284,7 +294,10 @@ export class OrderService {
 
             const saved = await manager.save(Order, newOrder);
 
-            await this.quoteRevisionService.markRevisionAsUsedForOrder(currentRevision.id, saved.id);
+            // Mark revision as used atomically within the same transaction.
+            currentRevision.usedForOrderId = saved.id;
+            currentRevision.usedAt = new Date();
+            await manager.save(QuoteRevision, currentRevision);
 
             this.logger.log(
                 `Order ${saved.id} [IN_PROGRESS] created by provider ${providerId} ` +
@@ -294,33 +307,27 @@ export class OrderService {
             return saved;
         });
 
-        // Post-transaction side-effects (best-effort, do not affect order outcome)
-        if (postCleanupPayload) {
-            // Direct-acceptance path: close post and reject competing quotes
-            const { postId, quoteId: cqId, post } = postCleanupPayload;
+        if (isChatNegotiationPath) {
             try {
-                await this.quoteStatusService.closePostAndRejectOtherQuotes(postId, cqId, post);
+                await this.notificationService.notifyOrderCreated(
+                    order.providerId,
+                    order.customerId,
+                    order.id,
+                    order.title,
+                );
             } catch (err) {
-                this.logger.error(`Post-confirmation cleanup failed for quote ${cqId}: ${err}`);
+                this.logger.warn(`Failed to send order-created notification for ${order.id}: ${err}`);
             }
+        }
+
+        try {
             await this.notificationService.notifyOrderInProgress(
                 order.customerId,
                 order.id,
                 order.title,
             );
-        } else {
-            // Chat-negotiation path: notifications
-            await this.notificationService.notifyOrderCreated(
-                order.customerId,
-                order.providerId,
-                order.id,
-                order.title,
-            );
-            await this.notificationService.notifyOrderInProgress(
-                order.customerId,
-                order.id,
-                order.title,
-            );
+        } catch (err) {
+            this.logger.warn(`Failed to send order-in-progress notification for ${order.id}: ${err}`);
         }
 
         return order;
@@ -522,10 +529,11 @@ export class OrderService {
         dto: CancelOrderDto,
     ): Promise<Order> {
         return await this.dataSource.transaction(async (manager) => {
-            const order = await manager.findOne(Order, {
-                where: { id: orderId },
-                lock: { mode: 'pessimistic_write' },
-            });
+            const order = await manager
+                .createQueryBuilder(Order, 'order')
+                .setLock('pessimistic_write')
+                .where('order.id = :id', { id: orderId })
+                .getOne();
 
             if (!order) {
                 throw new NotFoundException('Order not found');
@@ -591,10 +599,11 @@ export class OrderService {
         dto: CancelOrderDto,
     ): Promise<Order> {
         return await this.dataSource.transaction(async (manager) => {
-            const order = await manager.findOne(Order, {
-                where: { id: orderId },
-                lock: { mode: 'pessimistic_write' },
-            });
+            const order = await manager
+                .createQueryBuilder(Order, 'order')
+                .setLock('pessimistic_write')
+                .where('order.id = :id', { id: orderId })
+                .getOne();
 
             if (!order) {
                 throw new NotFoundException('Order not found');

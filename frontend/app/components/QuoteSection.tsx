@@ -249,7 +249,7 @@ export default function QuoteSection({ postId, isPostOwner, postCustomerId }: Qu
       accepted_for_chat: 'Đang trao đổi',
       revising: 'Đang chỉnh sửa giá',
       order_requested: 'Đã yêu cầu đặt đơn',
-      confirmed: 'Đã xác nhận',
+      confirmed: 'Đã tạo đơn hàng',
       accepted: 'Đã chấp nhận',
       rejected: 'Đã từ chối',
       cancelled: 'Đã hủy',

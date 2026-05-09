@@ -283,3 +283,79 @@ export class CancelQuoteDto {
     reason?: string;
 }
 
+export class QuoteRevisionItemDto {
+    @ApiProperty({ description: 'Revision ID' })
+    id!: string;
+
+    @ApiProperty({ description: 'Revision number — 1 is the original quote, higher numbers are re-quotes' })
+    revisionNumber!: number;
+
+    @ApiProperty({ description: 'Offered price in VND' })
+    price!: number;
+
+    @ApiProperty()
+    description!: string;
+
+    @ApiPropertyOptional()
+    terms?: string;
+
+    @ApiPropertyOptional({ description: 'Estimated duration in minutes' })
+    estimatedDuration?: number;
+
+    @ApiProperty({ type: [String] })
+    imageUrls!: string[];
+
+    @ApiPropertyOptional({ description: "Provider's stated reason for changing the price" })
+    changeReason?: string;
+
+    @ApiPropertyOptional({ description: 'Price delta vs previous revision (VND); null for the first revision' })
+    priceChange?: number;
+
+    @ApiPropertyOptional({ description: 'Percentage change vs previous revision; null for the first revision' })
+    percentChange?: number;
+
+    @ApiPropertyOptional({ description: 'Order ID this revision was committed to, if any' })
+    usedForOrderId?: string;
+
+    @ApiProperty()
+    createdAt!: Date;
+}
+
+export class QuoteWithRevisionsResponseDto {
+    @ApiProperty({ description: 'Quote ID' })
+    id!: string;
+
+    @ApiProperty({ enum: QuoteStatus })
+    status!: QuoteStatus;
+
+    @ApiProperty({ description: 'Current offered price in VND' })
+    currentPrice!: number;
+
+    @ApiProperty({ description: 'Total number of price revisions (1 = only the original quote)' })
+    revisionCount!: number;
+
+    @ApiPropertyOptional({ description: 'ID of the related public post' })
+    postId?: string;
+
+    @ApiPropertyOptional({ description: 'ID of the related custom request' })
+    customRequestId?: string;
+
+    @ApiProperty({ description: 'Provider (technician) user ID' })
+    providerId!: string;
+
+    @ApiPropertyOptional({ description: 'Timestamp when the customer opened the chat' })
+    chatOpenedAt?: Date;
+
+    @ApiPropertyOptional({ description: 'Timestamp when the customer requested an order' })
+    orderRequestedAt?: Date;
+
+    @ApiProperty({ type: [QuoteRevisionItemDto], description: 'Full revision history, oldest first' })
+    revisions!: QuoteRevisionItemDto[];
+
+    @ApiProperty()
+    createdAt!: Date;
+
+    @ApiProperty()
+    updatedAt!: Date;
+}
+

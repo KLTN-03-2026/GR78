@@ -5,7 +5,6 @@ import AppShell from '@/app/components/AppShell'
 import Header from '@/app/components/Header'
 import TradeFilter from '@/app/components/SearchFilters/TradeFilter'
 import ProvinceFilter from '@/app/components/SearchFilters/ProvinceFilter'
-import BudgetFilter from '@/app/components/SearchFilters/BudgetFilter'
 import SortFilter from '@/app/components/SearchFilters/SortFilter'
 import PostSearchResult from '@/app/components/SearchResults/PostSearchResult'
 import ProviderSearchResult from '@/app/components/SearchResults/ProviderSearchResult'
@@ -72,14 +71,10 @@ interface FilterPanelProps {
   tab: Tab
   province: string | null
   tradeSlugs: string[]
-  budgetMin: number | null
-  budgetMax: number | null
   sortBy: string
   order: 'asc' | 'desc'
   onProvinceChange: (v: string | null) => void
   onToggleTrade: (slug: string) => void
-  onMinBudget: (v: number | null) => void
-  onMaxBudget: (v: number | null) => void
   onSortChange: (sortBy: string, order: 'asc' | 'desc') => void
 }
 
@@ -87,28 +82,16 @@ function FilterPanel({
   tab,
   province,
   tradeSlugs,
-  budgetMin,
-  budgetMax,
   sortBy,
   order,
   onProvinceChange,
   onToggleTrade,
-  onMinBudget,
-  onMaxBudget,
   onSortChange,
 }: FilterPanelProps) {
   return (
     <aside className="flex flex-col gap-app-md">
       <ProvinceFilter value={province} onChange={onProvinceChange} />
       <TradeFilter selectedTrades={tradeSlugs} onToggleTrade={onToggleTrade} />
-      {tab === 'posts' && (
-        <BudgetFilter
-          minBudget={budgetMin}
-          maxBudget={budgetMax}
-          onMinChange={onMinBudget}
-          onMaxChange={onMaxBudget}
-        />
-      )}
       <SortFilter
         sortBy={sortBy}
         order={order}
@@ -130,10 +113,6 @@ export default function SearchPage() {
   const [tradeSlugs, setTradeSlugs] = useState<string[]>([])
   const [sortBy, setSortBy] = useState('createdAt')
   const [order, setOrder] = useState<'asc' | 'desc'>('desc')
-
-  // Post-only filters
-  const [budgetMin, setBudgetMin] = useState<number | null>(null)
-  const [budgetMax, setBudgetMax] = useState<number | null>(null)
 
   // Results
   const [posts, setPosts] = useState<SearchPostItem[]>([])
@@ -170,8 +149,6 @@ export default function SearchPage() {
           title: keyword.trim() || undefined,
           province: province || undefined,
           tradeSlugs: tradeSlugs.length ? tradeSlugs : undefined,
-          budgetMin: budgetMin ?? undefined,
-          budgetMax: budgetMax ?? undefined,
           sortBy: sortBy as 'createdAt' | 'budget' | 'desiredTime',
           order,
           limit: PAGE_SIZE,
@@ -188,7 +165,7 @@ export default function SearchPage() {
         setter(false)
       }
     },
-    [keyword, province, tradeSlugs, budgetMin, budgetMax, sortBy, order],
+    [keyword, province, tradeSlugs, sortBy, order],
   )
 
   const fetchProviders = useCallback(
@@ -235,7 +212,7 @@ export default function SearchPage() {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, keyword, province, tradeSlugs, budgetMin, budgetMax, sortBy, order])
+  }, [tab, keyword, province, tradeSlugs, sortBy, order])
 
   // ── Tab switch: reset results ──────────────────────────────────────────────
 
@@ -263,14 +240,12 @@ export default function SearchPage() {
   const handleResetFilters = () => {
     setProvince(null)
     setTradeSlugs([])
-    setBudgetMin(null)
-    setBudgetMax(null)
     setSortBy('createdAt')
     setOrder('desc')
   }
 
   const hasActiveFilters =
-    !!province || tradeSlugs.length > 0 || !!budgetMin || !!budgetMax || sortBy !== 'createdAt' || order !== 'desc'
+    !!province || tradeSlugs.length > 0 || sortBy !== 'createdAt' || order !== 'desc'
 
   // ── Load more ─────────────────────────────────────────────────────────────
 
@@ -345,7 +320,7 @@ export default function SearchPage() {
               Bộ lọc
               {hasActiveFilters && (
                 <span className="flex h-4 w-4 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-white">
-                  {tradeSlugs.length + (province ? 1 : 0) + (budgetMin ? 1 : 0) + (budgetMax ? 1 : 0)}
+                  {tradeSlugs.length + (province ? 1 : 0)}
                 </span>
               )}
             </button>
@@ -368,14 +343,10 @@ export default function SearchPage() {
                 tab={tab}
                 province={province}
                 tradeSlugs={tradeSlugs}
-                budgetMin={budgetMin}
-                budgetMax={budgetMax}
                 sortBy={sortBy}
                 order={order}
                 onProvinceChange={setProvince}
                 onToggleTrade={handleToggleTrade}
-                onMinBudget={setBudgetMin}
-                onMaxBudget={setBudgetMax}
                 onSortChange={handleSortChange}
               />
             </div>
@@ -402,14 +373,10 @@ export default function SearchPage() {
                   tab={tab}
                   province={province}
                   tradeSlugs={tradeSlugs}
-                  budgetMin={budgetMin}
-                  budgetMax={budgetMax}
                   sortBy={sortBy}
                   order={order}
                   onProvinceChange={setProvince}
                   onToggleTrade={handleToggleTrade}
-                  onMinBudget={setBudgetMin}
-                  onMaxBudget={setBudgetMax}
                   onSortChange={handleSortChange}
                 />
               </div>

@@ -20,12 +20,15 @@ export enum ConversationType {
 }
 
 @Entity('conversations')
-@Index(['customerId', 'providerId'])
 @Index(['quoteId'], { unique: true, where: 'quote_id IS NOT NULL' })
 @Index(['lastMessageAt'])
 // Composite indexes to serve ORDER BY last_message_at DESC for each participant column
 @Index(['customerId', 'lastMessageAt'])
 @Index(['providerId', 'lastMessageAt'])
+// Enforce exactly one conversation per (customer, provider) pair at DB level, regardless of type.
+// The app-level check does a fast SELECT first; the unique constraint is the last-resort safety net
+// for concurrent inserts that both pass the app-level check (race condition).
+@Index(['customerId', 'providerId'], { unique: true })
 export class Conversation {
     @PrimaryGeneratedColumn('uuid')
     id!: string;

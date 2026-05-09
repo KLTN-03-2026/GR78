@@ -3,6 +3,7 @@ import { UserRepository } from '@/modules/users/repositories/user.repository';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
     CreateQuoteDto,
+    QuoteWithRevisionsResponseDto,
     ReviseQuoteDto,
     UpdateQuoteDto
 } from './dtos/quote.dto';
@@ -307,20 +308,28 @@ export class QuoteService {
     }
 
 
-    async getQuoteRevisionHistory(quoteId: string, userId: string) {
+    async getQuoteRevisionHistory(quoteId: string, userId: string): Promise<QuoteWithRevisionsResponseDto> {
         const quote = await this.queryService.findQuoteWithRelations(quoteId, [
             'post',
             'customRequest',
         ]);
         this.validationService.validateQuoteAccess(quote, userId);
 
-        const revisions = await this.revisionService.getRevisionHistory(quoteId);
-        const priceChanges = await this.revisionService.getPriceChanges(quoteId);
+        const revisions = await this.revisionService.getRevisionHistoryWithPriceChanges(quoteId);
 
         return {
-            quote,
+            id: quote.id,
+            status: quote.status,
+            currentPrice: parseFloat(quote.price.toString()),
+            revisionCount: quote.revisionCount,
+            postId: quote.postId,
+            customRequestId: quote.customRequestId,
+            providerId: quote.providerId,
+            chatOpenedAt: quote.chatOpenedAt,
+            orderRequestedAt: quote.orderRequestedAt,
             revisions,
-            priceChanges,
+            createdAt: quote.createdAt,
+            updatedAt: quote.updatedAt,
         };
     }
 

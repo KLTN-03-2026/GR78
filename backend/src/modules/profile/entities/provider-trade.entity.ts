@@ -37,7 +37,7 @@ export class ProviderTrade {
     @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
     createdAt!: Date;
 
-    @ManyToOne(() => User, { eager: false, onDelete: 'CASCADE' })
+    @ManyToOne(() => User, (user) => user.providerTrades, { eager: false, onDelete: 'CASCADE' })
     @JoinColumn({ name: 'provider_id' })
     provider!: User;
 

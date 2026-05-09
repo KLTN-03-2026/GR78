@@ -47,7 +47,7 @@ export class SearchMapperService {
             bio: row.bio ? this.truncate(row.bio, 120) : undefined,
             address: row.address,
             province: this.extractProvince(row.address),
-            trades: this.mapTrades(row.providerTrades ?? []),
+            trades: this.mapTrades(row.user.providerTrades ?? []),
             isVerified: row.user.isVerified ?? false,
             memberSince: row.user.createdAt,
         };
