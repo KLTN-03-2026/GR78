@@ -87,25 +87,19 @@ class QuoteService {
    * [Provider] Tạo quote mới cho post
    */
   async createQuote(data: CreateQuoteRequest): Promise<Quote> {
-    console.log('Creating quote with data:', data)
-    
-    // Validate postId format (must be UUID)
     if (!data.postId || typeof data.postId !== 'string') {
       throw new Error('Invalid postId format')
     }
-    
-    // Validate price
+
     const price = Number(data.price)
     if (isNaN(price) || price <= 0) {
       throw new Error('Giá phải là số dương')
     }
-    
-    // Validate description
+
     if (!data.description || data.description.trim().length === 0) {
       throw new Error('Mô tả không được để trống')
     }
-    
-    // Format dữ liệu đúng theo backend API expect (theo CreateQuoteDto)
+
     const requestBody: {
       postId: string
       price: number
@@ -115,49 +109,28 @@ class QuoteService {
       imageUrls?: string[]
     } = {
       postId: data.postId.trim(),
-      price: price,
-      description: data.description.trim()
-    }
-    
-    // Chỉ thêm estimatedDuration nếu có giá trị hợp lệ
-    if (data.estimatedDuration) {
-      const duration = Number(data.estimatedDuration)
-      if (!isNaN(duration) && duration > 0) {
-        requestBody.estimatedDuration = duration
-      }
+      price,
+      description: data.description.trim(),
     }
 
-    if (data.terms?.trim()) {
-      requestBody.terms = data.terms.trim()
+    if (data.estimatedDuration) {
+      const duration = Number(data.estimatedDuration)
+      if (!isNaN(duration) && duration > 0) requestBody.estimatedDuration = duration
     }
-    if (data.imageUrls?.length) {
-      requestBody.imageUrls = data.imageUrls.map((u) => u.trim()).filter(Boolean)
-    }
-    
-    console.log('Formatted request body:', requestBody)
-    console.log('Request body JSON:', JSON.stringify(requestBody, null, 2))
-    console.log('Data types:', {
-      postId: typeof requestBody.postId,
-      price: typeof requestBody.price,
-      description: typeof requestBody.description,
-      estimatedDuration: requestBody.estimatedDuration ? typeof requestBody.estimatedDuration : 'undefined'
-    })
-    
+    if (data.terms?.trim()) requestBody.terms = data.terms.trim()
+    if (data.imageUrls?.length) requestBody.imageUrls = data.imageUrls.map((u) => u.trim()).filter(Boolean)
+
     const response = await authenticatedFetch('/api/quotes', {
       method: 'POST',
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
     })
-    
+
     if (!response.ok) {
       const error = await response.json()
-      console.error('Quote creation failed:', error)
-      console.error('Sent data:', requestBody)
       throw new Error(error.error || error.message || 'Failed to create quote')
     }
-    
-    const result = await response.json()
-    console.log('Quote created successfully:', result)
-    return result
+
+    return response.json()
   }
 
   /**
@@ -258,24 +231,16 @@ class QuoteService {
    * [Customer] Chấp nhận quote để mở chat
    */
   async acceptQuoteForChat(quoteId: string): Promise<{ conversationId?: string; message?: string }> {
-    console.log('📡 [QuoteService] Accepting quote:', quoteId)
-    
     const response = await authenticatedFetch(`/api/quotes/${quoteId}/accept-for-chat`, {
-      method: 'POST'
+      method: 'POST',
     })
-    
-    console.log('📡 [QuoteService] Response status:', response.status)
-    
+
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Unknown error' }))
-      console.error('❌ [QuoteService] Accept quote failed:', error)
       throw new Error(error.error || error.message || 'Không thể chấp nhận báo giá')
     }
-    
-    const data = await response.json()
-    console.log('✅ [QuoteService] Accept quote success:', data)
-    
-    return data
+
+    return response.json()
   }
 
   /**
@@ -297,26 +262,17 @@ class QuoteService {
    * [Customer] Từ chối quote
    */
   async rejectQuote(quoteId: string, reason?: string): Promise<Quote> {
-    console.log('📡 [QuoteService] Rejecting quote:', quoteId)
-    console.log('📡 [QuoteService] Reason:', reason || 'No reason')
-    
     const response = await authenticatedFetch(`/api/quotes/${quoteId}/reject`, {
       method: 'POST',
-      body: JSON.stringify({ reason })
+      body: JSON.stringify({ reason }),
     })
-    
-    console.log('📡 [QuoteService] Response status:', response.status)
-    
+
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Unknown error' }))
-      console.error('❌ [QuoteService] Reject failed:', error)
       throw new Error(error.error || error.message || 'Không thể từ chối báo giá')
     }
-    
-    const data = await response.json()
-    console.log('✅ [QuoteService] Reject success:', data)
-    
-    return data
+
+    return response.json()
   }
 
   /**

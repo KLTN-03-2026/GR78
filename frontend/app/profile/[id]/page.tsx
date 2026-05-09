@@ -7,6 +7,7 @@ import AppShell from '@/app/components/AppShell'
 import { ProfileService, PublicProfileResponse } from '@/lib/api/profile-new.service'
 import { PostService } from '@/lib/api/post.service'
 import { resolveMediaUrl } from '@/lib/media-url'
+import { AuthService } from '@/lib/api/auth.service'
 
 export default function PublicProfile() {
     const router = useRouter()
@@ -19,6 +20,11 @@ export default function PublicProfile() {
     const [userPosts, setUserPosts] = useState<any[]>([])
     const [postsLoading, setPostsLoading] = useState(false)
     const [activeTab, setActiveTab] = useState<'about' | 'posts'>('about')
+    const [isLoggedIn, setIsLoggedIn] = useState(false)
+
+    useEffect(() => {
+        setIsLoggedIn(Boolean(AuthService.getToken()))
+    }, [])
 
     useEffect(() => {
         if (userId) {
@@ -279,9 +285,19 @@ export default function PublicProfile() {
                                 {profile.role === 'provider' && (
                                     <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
                                         <h4 className="font-semibold text-purple-900 mb-2">🔧 Nhà cung cấp dịch vụ</h4>
-                                        <p className="text-sm text-purple-800">
-                                            Người dùng này cung cấp dịch vụ chuyên nghiệp. Bạn có thể xem yêu cầu dịch vụ và đánh giá của họ.
+                                        <p className="text-sm text-purple-800 mb-3">
+                                            Người dùng này cung cấp dịch vụ chuyên nghiệp. Gửi yêu cầu riêng để được báo giá nhanh chóng.
                                         </p>
+                                        <button
+                                            onClick={() =>
+                                                isLoggedIn
+                                                    ? router.push(`/yeu-cau-rieng/gui/${profile.id}`)
+                                                    : router.push(`/dang-nhap?redirect=/yeu-cau-rieng/gui/${profile.id}`)
+                                            }
+                                            className="w-full bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-purple-700"
+                                        >
+                                            ✉️ Gửi yêu cầu riêng tới thợ này
+                                        </button>
                                     </div>
                                 )}
                             </div>
@@ -345,15 +361,48 @@ export default function PublicProfile() {
                     {/* Contact Section */}
                     <div className="mt-8 mb-8 bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
                         <h3 className="font-semibold text-blue-900 mb-3">Bạn quan tâm đến dịch vụ của người dùng này?</h3>
-                        <p className="text-blue-800 text-sm mb-4">
-                            {profile.role === 'provider' ? 'Hãy tạo yêu cầu dịch vụ để kết nối với nhà cung cấp này.' : 'Bạn có thể xem bài đăng và liên hệ trực tiếp.'}
-                        </p>
-                        <button
-                            onClick={() => router.push('/posts/create')}
-                            className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 font-semibold"
-                        >
-                            📝 Tạo yêu cầu dịch vụ
-                        </button>
+                        {profile.role === 'provider' ? (
+                            <>
+                                <p className="text-blue-800 text-sm mb-4">
+                                    Gửi yêu cầu trực tiếp tới <strong>{profile.displayName || 'thợ này'}</strong> — họ sẽ xem xét và phản hồi kèm báo giá.
+                                </p>
+                                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                                    {isLoggedIn ? (
+                                        <button
+                                            onClick={() => router.push(`/yeu-cau-rieng/gui/${profile.id}`)}
+                                            className="bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 font-semibold text-sm"
+                                        >
+                                            ✉️ Gửi yêu cầu riêng
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={() => router.push(`/dang-nhap?redirect=/yeu-cau-rieng/gui/${profile.id}`)}
+                                            className="bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 font-semibold text-sm"
+                                        >
+                                            ✉️ Đăng nhập để gửi yêu cầu
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => router.push('/posts/create')}
+                                        className="bg-white border border-blue-300 text-blue-700 px-6 py-2.5 rounded-lg hover:bg-blue-50 font-semibold text-sm"
+                                    >
+                                        📝 Đăng yêu cầu công khai
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <p className="text-blue-800 text-sm mb-4">
+                                    Bạn có thể xem bài đăng và liên hệ trực tiếp.
+                                </p>
+                                <button
+                                    onClick={() => router.push('/posts/create')}
+                                    className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 font-semibold"
+                                >
+                                    📝 Tạo yêu cầu dịch vụ
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>

@@ -52,11 +52,17 @@ export default function ThongBaoPage() {
     )
   }
 
+  const isDirectRequestNotification = (notification: Partial<Notification>) => {
+    const type = String(notification.type || '').toLowerCase()
+    return type.includes('direct_request')
+  }
+
   const isQuoteNotification = (notification: Partial<Notification>) => {
+    // Direct request notifications are handled separately even if they mention "báo giá"
+    if (isDirectRequestNotification(notification)) return false
     const type = String(notification.type || '').toLowerCase()
     const title = String((notification as any).title || '').toLowerCase()
     const message = String((notification as any).message || '').toLowerCase()
-
     return (
       type.includes('quote') ||
       type.includes('bao_gia') ||
@@ -319,21 +325,37 @@ export default function ThongBaoPage() {
   }
 
   const handleNotificationClick = async (notification: Notification) => {
-    const shouldNavigateToQuote = isQuoteNotification(notification)
-    const actionUrl = String((notification as any).actionUrl || '').trim()
-    const needsMarkAsRead = !notification.isRead
-
-    if (needsMarkAsRead && !shouldNavigateToQuote) {
+    if (!notification.isRead) {
       await handleMarkAsRead(notification.id)
     }
 
-    if (shouldNavigateToQuote) {
+    // Direct request notifications → /yeu-cau-rieng/[id]
+    if (isDirectRequestNotification(notification)) {
+      const metadata = (notification as any).metadata || {}
+      const customRequestId = metadata.customRequestId
+      if (customRequestId) {
+        router.push(`/yeu-cau-rieng/${customRequestId}`)
+        return
+      }
+      // Fallback: remap legacy /custom-requests/ URL if present
+      const actionUrl = String((notification as any).actionUrl || '').trim()
+      if (actionUrl) {
+        router.push(actionUrl.replace(/^\/custom-requests\//, '/yeu-cau-rieng/'))
+        return
+      }
+      router.push('/yeu-cau-rieng')
+      return
+    }
+
+    if (isQuoteNotification(notification)) {
       await handleViewQuoteNotification(notification)
       return
     }
 
+    const actionUrl = String((notification as any).actionUrl || '').trim()
+    // Safety: remap any /custom-requests/ URLs for old stored notifications
     if (actionUrl) {
-      router.push(actionUrl)
+      router.push(actionUrl.replace(/^\/custom-requests\//, '/yeu-cau-rieng/'))
     }
   }
 
@@ -414,22 +436,35 @@ export default function ThongBaoPage() {
   })
 
   const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'quote':
-        return '💰'
-      case 'order':
-        return '📦'
-      case 'message':
-        return '💬'
-      case 'post':
-        return '📝'
-      case 'review':
-        return '⭐'
-      case 'system':
-        return '🔔'
-      default:
-        return '📢'
-    }
+    const t = (type || '').toLowerCase()
+    if (t.includes('direct_request_received')) return '📋'
+    if (t.includes('direct_request_accepted')) return '✅'
+    if (t.includes('direct_request_rejected')) return '❌'
+    if (t.includes('direct_request')) return '📋'
+    if (t.includes('new_quote') || t.includes('quote_received')) return '💰'
+    if (t.includes('quote_accepted_for_chat')) return '💬'
+    if (t.includes('quote_accepted')) return '✅'
+    if (t.includes('quote_rejected')) return '❌'
+    if (t.includes('quote_revised')) return '✏️'
+    if (t.includes('quote_cancelled')) return '🚫'
+    if (t.includes('quote')) return '💰'
+    if (t.includes('order_requested')) return '📦'
+    if (t.includes('order_awaiting')) return '⏳'
+    if (t.includes('order_created')) return '📦'
+    if (t.includes('order_completed')) return '🎉'
+    if (t.includes('order_cancelled')) return '🚫'
+    if (t.includes('order_in_progress')) return '🔨'
+    if (t.includes('order')) return '📦'
+    if (t.includes('message') || t.includes('chat')) return '💬'
+    if (t.includes('post')) return '📝'
+    if (t.includes('review')) return '⭐'
+    if (t.includes('payment_received')) return '💳'
+    if (t.includes('payment_failed')) return '⚠️'
+    if (t.includes('refund')) return '↩️'
+    if (t.includes('account_verified')) return '✅'
+    if (t.includes('account_suspended') || t.includes('account_warning')) return '⚠️'
+    if (t.includes('subscription')) return '🔑'
+    return '🔔'
   }
 
   const formatTime = (timestamp: string | Date) => {
@@ -543,27 +578,23 @@ export default function ThongBaoPage() {
             ) : (
               <div className="space-y-2">
                 {filteredNotifications.map((notification) => {
-                  const quoteNotification = isQuoteNotification(notification)
-
-                  // Debug: Log notification data
-                  console.log('🔍 Notification type:', notification.type)
-                  console.log('🔍 Is quote notification:', quoteNotification)
-                  console.log('🔍 Notification data:', (notification as any).data)
+                  const isDirectReq = isDirectRequestNotification(notification)
+                  const isQuoteNotif = isQuoteNotification(notification)
 
                   return (
                     <div
                       key={notification.id}
-                      onClick={() => {
-                        console.log('👆 Clicked notification:', notification)
-                        void handleNotificationClick(notification)
-                      }}
-                      className={`bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow ${!notification.isRead ? 'border-l-4 border-orange-500' : ''
-                        } cursor-pointer`}
+                      onClick={() => void handleNotificationClick(notification)}
+                      className={`bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
+                        !notification.isRead ? 'border-l-4 border-orange-500' : ''
+                      }`}
                     >
                       <div className="p-4">
                         <div className="flex items-start space-x-3">
                           <div className="flex-shrink-0">
-                            <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center text-2xl">
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl ${
+                              isDirectReq ? 'bg-blue-100' : 'bg-orange-100'
+                            }`}>
                               {getNotificationIcon(notification.type)}
                             </div>
                           </div>
@@ -581,9 +612,15 @@ export default function ThongBaoPage() {
                                   {formatTime(notification.createdAt)}
                                 </p>
 
-                                {/* Hiển thị hint cho notification báo giá */}
-                                {quoteNotification && (
-                                  <p className="mt-2 text-xs text-blue-600 font-medium">
+                                {/* Action hint */}
+                                {isDirectReq && (
+                                  <p className="mt-1.5 text-xs text-blue-600 font-medium">
+                                    Bấm để xem yêu cầu →
+                                  </p>
+                                )}
+                                {isQuoteNotif && (
+                                  <p className="mt-1.5 text-xs text-blue-600 font-medium">
+                                    Bấm để xem báo giá →
                                   </p>
                                 )}
                               </div>
