@@ -557,6 +557,14 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
                             Đánh giá
                         </Link>
                     )}
+                    {isWorker && (
+                        <Link
+                            href="/subscription"
+                            className={navTextClass(pathname.startsWith('/subscription'))}
+                        >
+                            Gói của bạn
+                        </Link>
+                    )}
                 </nav>
 
                 {/* Search — desktop */}
@@ -718,6 +726,9 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
                                         </Link>
                                         <Link href="/danh-gia-ve-toi" className="block px-4 py-2 text-sm text-foreground transition-colors hover:bg-brand-tint/70" onClick={() => setShowProfileMenu(false)}>
                                             ⭐ Đánh giá về tôi
+                                        </Link>
+                                        <Link href="/subscription" className="block px-4 py-2 text-sm text-foreground transition-colors hover:bg-brand-tint/70" onClick={() => setShowProfileMenu(false)}>
+                                            ✨ Gói của bạn
                                         </Link>
                                     </>
                                 ) : (
