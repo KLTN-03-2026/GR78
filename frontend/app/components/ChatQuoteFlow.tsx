@@ -5,6 +5,7 @@ import { chatService, type Message, MessageType } from '@/lib/api/chat.service'
 import { chatSocketService } from '@/lib/api/chat-socket.service'
 import { quoteService } from '@/lib/api/quote.service'
 import { orderService } from '@/lib/api/order.service'
+import { PostService } from '@/lib/api/post.service'
 import { resolveMediaUrl } from '@/lib/media-url'
 
 interface User {
@@ -51,6 +52,9 @@ export default function ChatQuoteFlow({
     const [showConfirmModal, setShowConfirmModal] = useState(false)
     const [confirmLoading, setConfirmLoading] = useState(false)
     const [confirmError, setConfirmError] = useState('')
+
+    const [latestQuoteId, setLatestQuoteId] = useState<string | undefined>(quoteId)
+    const [latestPostTitle, setLatestPostTitle] = useState<string>('')
 
     /** Trạng thái quote từ API — thợ luôn thấy CTA xác nhận khi khách đã request order (order_requested). */
     const [providerQuoteStatus, setProviderQuoteStatus] = useState<string | null>(null)
@@ -157,6 +161,47 @@ export default function ChatQuoteFlow({
             setProviderQuoteStatus(null)
         }
     }, [quoteId, currentUserRole])
+
+    useEffect(() => {
+        setLatestQuoteId(quoteId)
+        if (!quoteId || !otherUser?.id) return
+
+        const loadLatestQuoteContext = async () => {
+            try {
+                if (currentUserRole === 'PROVIDER') {
+                    const myQuotes = await quoteService.getMyQuotes()
+                    const sorted = [...myQuotes].sort(
+                        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                    )
+                    for (const q of sorted) {
+                        if (!q.postId) continue
+                        try {
+                            const post = await PostService.getPostById(q.postId)
+                            const postCustomerId = post.customerId || (post as any).customer?.id
+                            if (postCustomerId === otherUser.id) {
+                                setLatestQuoteId(q.id)
+                                setLatestPostTitle(post.title)
+                                break
+                            }
+                        } catch {
+                            continue
+                        }
+                    }
+                } else {
+                    const q = await quoteService.getQuoteById(quoteId)
+                    const postId = (q as any).postId
+                    if (postId) {
+                        const post = await PostService.getPostById(postId)
+                        setLatestPostTitle(post.title)
+                    }
+                }
+            } catch {
+                // best-effort; fall back to quoteId prop
+            }
+        }
+
+        void loadLatestQuoteContext()
+    }, [quoteId, otherUser?.id, currentUserRole])
 
     useEffect(() => {
         setProviderQuoteStatus(null)
@@ -335,7 +380,8 @@ export default function ChatQuoteFlow({
 
     // Revise quote
     const handleReviseQuote = async (newPrice: number, newDescription: string) => {
-        if (!quoteId) {
+        const activeQuoteId = latestQuoteId ?? quoteId
+        if (!activeQuoteId) {
             alert('❌ Không tìm thấy báo giá')
             return
         }
@@ -344,15 +390,16 @@ export default function ChatQuoteFlow({
             setOrderLoading(true)
             setOrderError('')
 
-            await quoteService.reviseQuote(quoteId, {
+            await quoteService.reviseQuote(activeQuoteId, {
                 price: newPrice,
                 description: newDescription
             })
 
+            const titlePart = latestPostTitle ? ` [${latestPostTitle}]` : ''
             // Send via Socket with fallback to REST
             const payload = {
                 type: 'text' as const,
-                content: `Thợ chào giá: ${newPrice.toLocaleString()}đ - ${newDescription}`
+                content: `Thợ chào giá${titlePart}: ${newPrice.toLocaleString()}đ - ${newDescription}`
             }
 
             const response = await chatSocketService.sendMessage(conversationId, payload)
@@ -390,9 +437,10 @@ export default function ChatQuoteFlow({
             console.log('✅ Quote status changed to ORDER_REQUESTED')
 
             // Then send message notification
+            const titlePart = latestPostTitle ? ` [${latestPostTitle}]` : ''
             const payload = {
                 type: 'text' as const,
-                content: `Khách đặt đơn với giá: ${selectedQuoteData.price.toLocaleString()}đ`
+                content: `Khách đặt đơn${titlePart} với giá: ${selectedQuoteData.price.toLocaleString()}đ`
             }
 
             const response = await chatSocketService.sendMessage(conversationId, payload)
@@ -594,7 +642,7 @@ export default function ChatQuoteFlow({
 
             {/* Action: Thợ chào giá lại */}
             {currentUserRole === 'PROVIDER' && (
-                <ReviseQuoteForm onSubmit={handleReviseQuote} loading={orderLoading} />
+                <ReviseQuoteForm onSubmit={handleReviseQuote} loading={orderLoading} postTitle={latestPostTitle} />
             )}
 
             {/* Message Input */}
@@ -653,7 +701,7 @@ export default function ChatQuoteFlow({
     )
 }
 
-function ReviseQuoteForm({ onSubmit, loading }: { onSubmit: (price: number, desc: string) => void; loading: boolean }) {
+function ReviseQuoteForm({ onSubmit, loading, postTitle }: { onSubmit: (price: number, desc: string) => void; loading: boolean; postTitle?: string }) {
     const [price, setPrice] = useState(0)
     const [description, setDescription] = useState('')
     const [showForm, setShowForm] = useState(false)
@@ -665,7 +713,7 @@ function ReviseQuoteForm({ onSubmit, loading }: { onSubmit: (price: number, desc
                     onClick={() => setShowForm(true)}
                     className="w-full px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-medium"
                 >
-                    💰 Chào giá lại
+                    💰 Chào giá lại{postTitle ? ` — ${postTitle}` : ''}
                 </button>
             </div>
         )

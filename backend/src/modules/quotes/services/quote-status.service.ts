@@ -1,8 +1,5 @@
 import { ChatService } from '@/modules/chat/chat.service';
-import { PostCustomer } from '@/modules/posts/entities/post.entity';
-import { PostRepository } from '@/modules/posts/repositories/post.repository';
 import { Injectable, Logger } from '@nestjs/common';
-import { IsNull, Not } from 'typeorm';
 import { Quote } from '../entities/quote.entity';
 import { QuoteStatus } from '../enums/quote-status.enum';
 import { QuoteRepository } from '../repositories/quote.repository';
@@ -15,7 +12,6 @@ export class QuoteStatusService {
 
     constructor(
         private readonly quoteRepo: QuoteRepository,
-        private readonly postRepo: PostRepository,
         private readonly revisionService: QuoteRevisionService,
         private readonly notificationService: QuoteNotificationService,
         private readonly chatService: ChatService,
@@ -100,24 +96,6 @@ export class QuoteStatusService {
     }
 
 
-    async confirmOrder(quote: Quote): Promise<Quote> {
-        this.logger.log(`Provider confirming order for quote ${quote.id}`);
-
-        quote.status = QuoteStatus.CONFIRMED;
-        quote.confirmedAt = new Date();
-
-        const savedQuote = await this.quoteRepo.save(quote);
-
-        // Close the associated post and reject other quotes only for post-based quotes
-        if (quote.post && quote.postId) {
-            await this.postRepo.closePost(quote.post);
-            await this.rejectOtherQuotes(quote.postId, quote.id);
-        }
-
-        return savedQuote;
-    }
-
-    
     async rejectQuote(quote: Quote, reason?: string): Promise<Quote> {
         quote.status = QuoteStatus.REJECTED;
         quote.rejectedAt = new Date();
@@ -139,49 +117,4 @@ export class QuoteStatusService {
         return await this.quoteRepo.save(quote);
     }
 
-    async closePostAndRejectOtherQuotes(
-        postId: string,
-        confirmedQuoteId: string,
-        post: PostCustomer,
-    ): Promise<void> {
-        await this.postRepo.closePost(post);
-        await this.rejectOtherQuotes(postId, confirmedQuoteId);
-    }
-
-
-    private async rejectOtherQuotes(
-        postId: string,
-        confirmedQuoteId: string,
-    ): Promise<void> {
-        const otherQuotes = await this.quoteRepo.find({
-            where: {
-                postId,
-                id: Not(confirmedQuoteId),
-                status: Not(QuoteStatus.REJECTED),
-                deletedAt: IsNull(),
-            },
-            relations: ['post'],
-        });
-
-        const rejectionReason = 'Khách hàng đã chọn thợ khác';
-
-        if (otherQuotes.length === 0) return;
-
-        const rejectedAt = new Date();
-        for (const quote of otherQuotes) {
-            quote.status = QuoteStatus.REJECTED;
-            quote.rejectedAt = rejectedAt;
-            quote.rejectionReason = rejectionReason;
-        }
-
-        await Promise.all(otherQuotes.map(quote => this.quoteRepo.save(quote)));
-
-        await Promise.allSettled(
-            otherQuotes.map(quote =>
-                this.notificationService.notifyQuoteRejected(quote, rejectionReason),
-            ),
-        );
-
-        this.logger.log(`Rejected ${otherQuotes.length} other quotes for post ${postId}`);
-    }
 }

@@ -26,6 +26,7 @@ import {
     CancelQuoteDto,
     CreateQuoteDto,
     QuoteResponseDto,
+    QuoteWithRevisionsResponseDto,
     RejectQuoteDto,
     ReviseQuoteDto,
     UpdateQuoteDto,
@@ -248,10 +249,11 @@ export class QuoteController {
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
         summary: 'Xem quote với toàn bộ lịch sử revisions',
-        description: 'Dùng cho chat để hiển thị lịch sử chào giá. Customer có thể chọn revision để tạo order.'
+        description: 'Dùng cho chat để hiển thị lịch sử chào giá từ cũ nhất đến mới nhất. Cả customer lẫn technician đều có thể truy cập.'
     })
-    @ApiResponse({ status: 200, description: 'Success' })
+    @ApiResponse({ status: 200, description: 'Success', type: QuoteWithRevisionsResponseDto })
     @ApiResponse({ status: 403, description: 'No access' })
+    @ApiResponse({ status: 404, description: 'Quote not found' })
     async getQuoteWithRevisions(
         @Param('id') quoteId: string,
         @CurrentUserId('id') userId: string,

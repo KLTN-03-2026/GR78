@@ -12,6 +12,7 @@ import { AuthService } from '@/lib/api/auth.service'
 import { chatSocketService } from '@/lib/api/chat-socket.service'
 import ChatQuoteFlow from '@/app/components/ChatQuoteFlow'
 import ConversationItem from '@/app/components/ConversationItem'
+import ChatQuotePanel from '@/app/components/ChatQuotePanel'
 import { resolveMediaUrl as normalizeImageUrl } from '@/lib/media-url'
 
 interface User {
@@ -62,6 +63,7 @@ export default function TinNhanPage() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [messagesLoading, setMessagesLoading] = useState(false)
   const [usersCache, setUsersCache] = useState<{ [key: string]: User }>({})  // Cache for user info
+  const [showQuotePanel, setShowQuotePanel] = useState(false)
   const [conversationLastViewedAt, setConversationLastViewedAt] = useState<Record<string, number>>({})
   const [conversationViewedRawUnread, setConversationViewedRawUnread] = useState<Record<string, number>>({})
   const selectedConversationRef = useRef<Conversation | null>(null)
@@ -226,6 +228,7 @@ export default function TinNhanPage() {
     )
 
     setSelectedConversation(clearUnreadForCurrentUser(conversation, currentUserRef.current))
+    setShowQuotePanel(false)
 
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(LAST_OPENED_CONVERSATION_STORAGE_KEY, conversation.id)
@@ -1004,6 +1007,23 @@ export default function TinNhanPage() {
                 </div>
 
                 <div className="flex gap-2">
+                  {selectedConversation.quoteId && (
+                    <button
+                      type="button"
+                      onClick={() => setShowQuotePanel((v) => !v)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                        showQuotePanel
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                      }`}
+                      title="Xem và quản lý báo giá"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                      Báo giá
+                    </button>
+                  )}
                   {selectedConversation.isClosed ? (
                     <button
                       onClick={handleReopenConversation}
@@ -1075,6 +1095,19 @@ export default function TinNhanPage() {
         </div>
       </div>
     </div>
+
+    {selectedConversation?.quoteId && (
+      <ChatQuotePanel
+        customerId={selectedConversation.customerId}
+        providerId={selectedConversation.providerId}
+        currentUserRole={isProviderRole(currentUser) ? 'PROVIDER' : 'CUSTOMER'}
+        isOpen={showQuotePanel}
+        onClose={() => setShowQuotePanel(false)}
+        onActionCompleted={() => {
+          setShowQuotePanel(false)
+        }}
+      />
+    )}
     </AppShell>
   )
 }

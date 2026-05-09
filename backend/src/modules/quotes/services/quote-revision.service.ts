@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { QuoteRevisionItemDto } from '../dtos/quote.dto';
 import { QuoteRevision } from '../entities/quote-revision.entity';
 import { Quote } from '../entities/quote.entity';
 
@@ -83,7 +84,46 @@ export class QuoteRevisionService {
         return !!revision?.usedForOrderId;
     }
 
-    
+    /**
+     * Returns the full revision history for a quote in a single DB round-trip,
+     * with price-change deltas computed inline. Use this instead of calling
+     * getRevisionHistory + getPriceChanges separately.
+     */
+    async getRevisionHistoryWithPriceChanges(quoteId: string): Promise<QuoteRevisionItemDto[]> {
+        const revisions = await this.revisionRepo.find({
+            where: { quoteId },
+            order: { revisionNumber: 'ASC' },
+        });
+
+        return revisions.map((revision, index) => {
+            const currentPrice = parseFloat(revision.price.toString());
+            let priceChange: number | undefined;
+            let percentChange: number | undefined;
+
+            if (index > 0) {
+                const previousPrice = parseFloat(revisions[index - 1].price.toString());
+                priceChange = currentPrice - previousPrice;
+                percentChange = ((currentPrice - previousPrice) / previousPrice) * 100;
+            }
+
+            return {
+                id: revision.id,
+                revisionNumber: revision.revisionNumber,
+                price: currentPrice,
+                description: revision.description,
+                terms: revision.terms,
+                estimatedDuration: revision.estimatedDuration,
+                imageUrls: revision.imageUrls ?? [],
+                changeReason: revision.changeReason,
+                priceChange,
+                percentChange,
+                usedForOrderId: revision.usedForOrderId,
+                createdAt: revision.createdAt,
+            };
+        });
+    }
+
+
     async getPriceChanges(quoteId: string): Promise<{
         revisionNumber: number;
         price: number;

@@ -75,11 +75,17 @@ export class ChatController {
     }
 
     @Post('conversations/direct')
-    @ApiOperation({ summary: 'Tạo conversation riêng với thợ' })
-    @ApiResponse({ status: 201, description: 'Tạo thành công' })
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: 'Lấy hoặc tạo conversation trực tiếp với thợ',
+        description:
+            'Idempotent: trả về conversation hiện có nếu đã tồn tại, tạo mới nếu chưa có. ' +
+            'Luôn trả về HTTP 200.',
+    })
+    @ApiResponse({ status: 200, description: 'Conversation đã tạo hoặc đã tồn tại' })
     async createDirectConversation(
         @CurrentUserId('id') customerId: string,
-        @Body() dto: CreateDirectConversationDto
+        @Body() dto: CreateDirectConversationDto,
     ) {
         return await this.chatService.createDirectConversation(customerId, dto.providerId);
     }

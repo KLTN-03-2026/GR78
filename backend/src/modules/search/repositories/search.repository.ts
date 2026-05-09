@@ -4,6 +4,7 @@ import { PostStatus } from '@/modules/posts/enums/post-status.enum';
 import { Profile } from '@/modules/profile/entities/profile.entity';
 import { ProviderTrade } from '@/modules/profile/entities/provider-trade.entity';
 import { Trade } from '@/modules/profile/entities/trade.entity';
+import { User } from '@/modules/users/entities/user.entity';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository, SelectQueryBuilder } from 'typeorm';
@@ -19,23 +20,21 @@ import {
 
 
 export type ProviderRow = Profile & {
-    user: { id: string; isVerified: boolean; createdAt: Date;[key: string]: any };
-    providerTrades: ProviderTrade[];
+    user: User & { providerTrades?: ProviderTrade[] };
 };
 
 function escapeLikeParam(raw: string): string {
     return raw
-        .replace(/\\/g, '\\\\') // 1. escape sentinel 
+        .replace(/\\/g, '\\\\') // 1. escape sentinel
         .replace(/%/g, '\\%')   // 2. escape wildcard %
         .replace(/_/g, '\\_');  // 3. escape wildcard _
 }
 
-const ESCAPE_CLAUSE = "ESCAPE '\\\\'";
-
-
-
+// Escapes %, _, and \ inside a column expression so it is safe as a LIKE pattern.
+// Uses $1 backreference (POSIX syntax) instead of \1 to avoid ambiguity under
+// standard_conforming_strings = on.
 function escapeTradeNameCol(colSql: string): string {
-    return `regexp_replace(${colSql}, '([%_\\\\])', '\\\\\\1', 'g')`;
+    return `regexp_replace(${colSql}, '([%_\\\\])', '\\\\$1', 'g')`;
 }
 
 // ─── Repository ───────────────────────────────────────────────────────────────
@@ -88,16 +87,12 @@ export class SearchRepository {
                       AND  (
                                unaccent(post.title)
                                    ILIKE unaccent('%' || ${escapedName} || '%')
-                                   ${ESCAPE_CLAUSE}
                             OR  post.title
                                    ILIKE '%' || ${escapedName} || '%'
-                                   ${ESCAPE_CLAUSE}
                             OR  unaccent(post.description)
                                    ILIKE unaccent('%' || ${escapedName} || '%')
-                                   ${ESCAPE_CLAUSE}
                             OR  post.description
                                    ILIKE '%' || ${escapedName} || '%'
-                                   ${ESCAPE_CLAUSE}
                            )
                 )`,
                 { postTradeSlugs: dto.tradeSlugs },
@@ -242,11 +237,11 @@ export class SearchRepository {
             new Brackets((ob) => {
                 ob
                     .where(
-                        `unaccent(COALESCE(profile.displayName, '')) ILIKE unaccent(:glike) ${ESCAPE_CLAUSE}`,
+                        `unaccent(COALESCE(profile.displayName, '')) ILIKE unaccent(:glike)`,
                         { glike: `%${safeKw}%` },
                     )
                     .orWhere(
-                        `COALESCE(profile.displayName, '') ILIKE :graw ${ESCAPE_CLAUSE}`,
+                        `COALESCE(profile.displayName, '') ILIKE :graw`,
                         { graw: `%${safeKw}%` },
                     )
                     .orWhere(
@@ -258,12 +253,12 @@ export class SearchRepository {
                               AND  _gt.is_active     = true
                               AND  (
                                        unaccent(${escapedGtName})
-                                           ILIKE unaccent(:gtLike) ${ESCAPE_CLAUSE}
+                                           ILIKE unaccent(:gtLike)
                                     OR  ${escapedGtName}
-                                           ILIKE :gtRaw ${ESCAPE_CLAUSE}
+                                           ILIKE :gtRaw
                                    )
                         )`,
-                        { gtLike: `%${keyword}%`, gtRaw: `%${keyword}%` },
+                        { gtLike: `%${safeKw}%`, gtRaw: `%${safeKw}%` },
                     );
             }),
         );
@@ -346,11 +341,11 @@ export class SearchRepository {
             new Brackets((b) => {
                 b
                     .where(
-                        `unaccent(COALESCE(${column}, '')) ILIKE unaccent(:${pUnaccent}) ${ESCAPE_CLAUSE}`,
+                        `unaccent(COALESCE(${column}, '')) ILIKE unaccent(:${pUnaccent})`,
                         { [pUnaccent]: `%${safe}%` },
                     )
                     .orWhere(
-                        `COALESCE(${column}, '') ILIKE :${pRaw} ${ESCAPE_CLAUSE}`,
+                        `COALESCE(${column}, '') ILIKE :${pRaw}`,
                         { [pRaw]: `%${safe}%` },
                     );
             }),

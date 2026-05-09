@@ -1,6 +1,7 @@
 import { UserRole } from '@/common/enums/user-role.enum';
 import { RefreshToken } from '@/modules/auth/entities/refresh-token.entity';
 import { Profile } from '@/modules/profile/entities/profile.entity';
+import { ProviderTrade } from '@/modules/profile/entities/provider-trade.entity';
 import {
     Column,
     CreateDateColumn,
@@ -122,6 +123,9 @@ export class User {
         cascade: true
     })
     refreshTokens?: RefreshToken[];
+
+    @OneToMany(() => ProviderTrade, (pt) => pt.provider, { cascade: false, eager: false })
+    providerTrades?: ProviderTrade[];
 
     isAdmin(): boolean {
         return this.role === UserRole.ADMIN;
