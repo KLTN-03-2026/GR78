@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { quoteService } from '@/lib/api/quote.service'
+import { quoteService, type PostQuoteGroup } from '@/lib/api/quote.service'
 import { orderService } from '@/lib/api/order.service'
-import { PostService } from '@/lib/api/post.service'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -19,27 +18,6 @@ interface QuoteRevisionDetail {
   percentChange?: number
   usedForOrderId?: string
   createdAt: string
-}
-
-interface QuoteDetail {
-  id: string
-  status: string
-  price: number
-  currentPrice?: number
-  postId?: string
-  providerId: string
-  chatOpenedAt?: string
-  orderRequestedAt?: string
-  revisions: QuoteRevisionDetail[]
-  createdAt: string
-  updatedAt: string
-}
-
-interface PostQuoteGroup {
-  postId: string
-  postTitle: string
-  quoteId: string
-  quote: QuoteDetail
 }
 
 export interface ChatQuotePanelProps {
@@ -398,91 +376,14 @@ export default function ChatQuotePanel({
     setLoading(true)
     setFetchError('')
     try {
-      const matched: PostQuoteGroup[] = []
-
-      if (quoteId) {
-        const detailed = await quoteService.getQuoteWithRevisions(quoteId)
-        const post = detailed.postId ? await PostService.getPostById(detailed.postId) : null
-        if (!Array.isArray((detailed as any).revisions)) {
-          (detailed as any).revisions = []
-        }
-
-        matched.push({
-          postId: detailed.postId || '',
-          postTitle: post?.title || 'Báo giá',
-          quoteId: detailed.id,
-          quote: detailed as unknown as QuoteDetail,
-        })
-
-        setGroups(matched)
-        return
-      }
-
-      if (currentUserRole === 'PROVIDER') {
-        const myQuotes = await quoteService.getMyQuotes()
-
-        for (const quote of myQuotes) {
-          if (!quote.postId) continue
-          try {
-            const post = await PostService.getPostById(quote.postId)
-            const postCustomerId = post.customerId || (post as any).customer?.id
-            if (postCustomerId !== customerId) continue
-
-            const detailed = await quoteService.getQuoteWithRevisions(quote.id)
-            if (!Array.isArray((detailed as any).revisions)) {
-              (detailed as any).revisions = []
-            }
-            matched.push({
-              postId: quote.postId,
-              postTitle: post.title,
-              quoteId: quote.id,
-              quote: detailed as unknown as QuoteDetail,
-            })
-          } catch {
-            continue
-          }
-        }
-      } else {
-        // CUSTOMER
-        const feedResult = await PostService.getMyPosts()
-        const myPosts: any[] = (feedResult as any).data ?? []
-
-        for (const post of myPosts) {
-          try {
-            const postQuotes = await quoteService.getQuotesByPostId(post.id)
-            const arr: any[] = Array.isArray(postQuotes)
-              ? postQuotes
-              : (postQuotes as any)?.data ?? []
-            const providerQuote = arr.find((q: any) => q.providerId === providerId)
-            if (!providerQuote) continue
-
-            const detailed = await quoteService.getQuoteWithRevisions(providerQuote.id)
-            if (!Array.isArray((detailed as any).revisions)) {
-              (detailed as any).revisions = []
-            }
-            matched.push({
-              postId: post.id,
-              postTitle: post.title,
-              quoteId: providerQuote.id,
-              quote: detailed as unknown as QuoteDetail,
-            })
-          } catch {
-            continue
-          }
-        }
-      }
-
-      // Sort oldest quote first
-      matched.sort(
-        (a, b) => new Date(a.quote.createdAt).getTime() - new Date(b.quote.createdAt).getTime()
-      )
-      setGroups(matched)
+      const groups = await quoteService.getQuotesBetweenUsers(customerId, providerId)
+      setGroups(groups as PostQuoteGroup[])
     } catch (err: any) {
       setFetchError(err.message || 'Không thể tải thông tin báo giá')
     } finally {
       setLoading(false)
     }
-  }, [customerId, providerId, currentUserRole])
+  }, [customerId, providerId])
 
   useEffect(() => {
     if (isOpen) {

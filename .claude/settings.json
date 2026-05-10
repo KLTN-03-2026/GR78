@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /Users/tindethuong/Desktop/mygit/doan/service-matching-backend-clean -type f -name \"*.ts\" | grep -E \"\\(quote|post\\)\" | head -20)",
+      "Read(//Users/tindethuong/Desktop/mygit/doan/service-matching-backend-clean/**)"
+    ],
+    "additionalDirectories": [
+      "/Users/tindethuong/Desktop/mygit/doan/service-matching-backend-clean/src/modules/quotes/services",
+      "/Users/tindethuong/Desktop/mygit/doan/service-matching-backend-clean/src/modules/quotes/dtos",
+      "/Users/tindethuong/Desktop/mygit/doan/service-matching-backend-clean/src/modules/quotes"
+    ]
+  }
+}

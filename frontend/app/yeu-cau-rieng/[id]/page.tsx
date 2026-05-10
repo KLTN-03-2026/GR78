@@ -255,6 +255,8 @@ export default function CustomRequestDetailPage() {
       }
     } catch (err) {
       setQuoteActionError(err instanceof Error ? err.message : 'Không thể mở trao đổi')
+      // Refresh so UI stays in sync with DB state after any failure
+      await loadQuote().catch(() => {})
     } finally {
       setProcessingQuote(false)
     }

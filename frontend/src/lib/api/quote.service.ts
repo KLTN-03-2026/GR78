@@ -58,14 +58,34 @@ export interface Quote {
 
 export interface QuoteRevision {
   id: string
-  quoteId: string
+  quoteId?: string
+  revisionNumber?: number
   price: number
   description: string
+  terms?: string
+  estimatedDuration?: number
+  changeReason?: string
+  priceChange?: number
+  percentChange?: number
+  usedForOrderId?: string
   createdAt: string
 }
 
 export interface QuoteWithRevisions extends Quote {
   revisions: QuoteRevision[]
+}
+
+export interface PostQuoteGroup {
+  postId: string
+  postTitle: string
+  quoteId: string
+  quote: QuoteWithRevisions & {
+    currentPrice?: number
+    chatOpenedAt?: string
+    orderRequestedAt?: string
+    revisionCount?: number
+    customRequestId?: string
+  }
 }
 
 export interface CreateQuoteRequest {
@@ -299,6 +319,22 @@ class QuoteService {
     if (!response.ok) {
       const error = await response.json()
       throw new Error(error.error || 'Failed to get quote with revisions')
+    }
+    return response.json()
+  }
+
+  /**
+   * Lấy tất cả báo giá giữa customer và provider, sắp xếp theo bài đăng từ cũ đến mới.
+   * Dùng trong ChatQuotePanel để hiển thị toàn bộ lịch sử thương lượng.
+   */
+  async getQuotesBetweenUsers(customerId: string, providerId: string): Promise<PostQuoteGroup[]> {
+    const response = await authenticatedFetch(
+      `/api/quotes/between-users?customerId=${encodeURIComponent(customerId)}&providerId=${encodeURIComponent(providerId)}`,
+      { method: 'GET' },
+    )
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Failed to get quotes between users')
     }
     return response.json()
   }
