@@ -1,16 +1,19 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { reviewService, type PublicReviewRow } from '@/lib/api/review.service'
 
 type Props = {
   providerId: string
   /** Bỏ padding ngoài khi nhúng trong tab hồ sơ */
   compact?: boolean
+  highlightReviewId?: string | null
 }
 
-export default function ProviderReceivedReviewsPanel({ providerId, compact }: Props) {
+export default function ProviderReceivedReviewsPanel({ providerId, compact, highlightReviewId }: Props) {
   const [rows, setRows] = useState<PublicReviewRow[]>([])
+  const [activeReviewId, setActiveReviewId] = useState<string | null>(null)
+  const reviewRefs = useRef<Record<string, HTMLLIElement | null>>({})
   const [total, setTotal] = useState(0)
   const [averageRating, setAverageRating] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
@@ -44,6 +47,29 @@ export default function ProviderReceivedReviewsPanel({ providerId, compact }: Pr
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    if (highlightReviewId && highlightReviewId.trim()) {
+      setActiveReviewId(highlightReviewId.trim())
+    }
+  }, [highlightReviewId])
+
+  useEffect(() => {
+    if (!activeReviewId || rows.length === 0) {
+      return
+    }
+
+    const reviewElement = reviewRefs.current[activeReviewId]
+    if (reviewElement) {
+      reviewElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setActiveReviewId(null)
+    }, 8000)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [activeReviewId, rows])
 
   const outer = compact ? '' : 'rounded-xl border border-slate-200 bg-white p-4 shadow-sm'
 
@@ -92,7 +118,14 @@ export default function ProviderReceivedReviewsPanel({ providerId, compact }: Pr
           return (
             <li
               key={r.id}
-              className="rounded-lg border border-slate-100 bg-slate-50/80 px-4 py-3 text-left"
+              ref={(el) => {
+                if (el) reviewRefs.current[r.id] = el
+              }}
+              className={`rounded-lg border px-4 py-3 text-left transition-shadow ${
+                activeReviewId === r.id
+                  ? 'border-yellow-400 bg-yellow-50 ring-2 ring-yellow-300 ring-offset-2 ring-offset-white shadow-lg'
+                  : 'border-slate-100 bg-slate-50/80'
+              }`}
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-medium text-slate-800">{name}</span>

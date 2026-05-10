@@ -71,6 +71,23 @@ export default function ThongBaoPage() {
     )
   }
 
+  const isReviewNotification = (notification: Partial<Notification>) => {
+    const type = String(notification.type || '').toLowerCase()
+    const title = String((notification as any).title || '').toLowerCase()
+    const message = String((notification as any).message || '').toLowerCase()
+    const actionUrl = String((notification as any).actionUrl || '').toLowerCase()
+
+    return (
+      type.includes('review') ||
+      title.includes('review') ||
+      title.includes('đánh giá') ||
+      message.includes('review') ||
+      message.includes('đánh giá') ||
+      actionUrl.includes('/reviews/') ||
+      actionUrl.includes('/danh-gia-ve-toi')
+    )
+  }
+
   useEffect(() => {
     const token = AuthService.getToken()
     if (!token) {
@@ -273,6 +290,46 @@ export default function ThongBaoPage() {
     return match?.[1] || null
   }
 
+  const extractReviewIdFromNotification = (notification: Notification) => {
+    const metadata = (notification as any).metadata || (notification as any).data || {}
+    const reviewId = String(
+      metadata.reviewId ||
+      metadata.review_id ||
+      metadata.id ||
+      metadata.entityId ||
+      metadata.review?.id ||
+      metadata.reviewId ||
+      '',
+    ).trim()
+    if (reviewId) {
+      return reviewId
+    }
+
+    const actionUrl = String((notification as any).actionUrl || '').trim()
+    if (!actionUrl) {
+      return null
+    }
+
+    const queryString = actionUrl.includes('?') ? actionUrl.split('?')[1] : ''
+    const queryParams = new URLSearchParams(queryString)
+    const reviewIdFromQuery = queryParams.get('reviewId') || queryParams.get('id')
+    if (reviewIdFromQuery?.trim()) {
+      return reviewIdFromQuery.trim()
+    }
+
+    const match = actionUrl.match(/\/reviews\/([^/?#]+)/i)
+    if (match?.[1]) {
+      return match[1]
+    }
+
+    const hashMatch = actionUrl.match(/#review-([^/?#]+)/i)
+    if (hashMatch?.[1]) {
+      return hashMatch[1]
+    }
+
+    return null
+  }
+
   // Chuyển đến trang chi tiết bài đăng khi click vào thông báo chào giá
   const handleViewQuoteNotification = async (notification: Notification) => {
     console.log('=== CLICK NOTIFICATION ===')
@@ -344,6 +401,16 @@ export default function ThongBaoPage() {
         return
       }
       router.push('/yeu-cau-rieng')
+      return
+    }
+
+    if (isReviewNotification(notification)) {
+      const reviewId = extractReviewIdFromNotification(notification)
+      if (reviewId) {
+        router.push(`/danh-gia-ve-toi?highlightReviewId=${encodeURIComponent(reviewId)}`)
+      } else {
+        router.push('/danh-gia-ve-toi')
+      }
       return
     }
 
@@ -580,13 +647,14 @@ export default function ThongBaoPage() {
                 {filteredNotifications.map((notification) => {
                   const isDirectReq = isDirectRequestNotification(notification)
                   const isQuoteNotif = isQuoteNotification(notification)
+                  const isReviewNotif = isReviewNotification(notification)
 
                   return (
                     <div
                       key={notification.id}
                       onClick={() => void handleNotificationClick(notification)}
                       className={`bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
-                        !notification.isRead ? 'border-l-4 border-orange-500' : ''
+                        !notification.isRead ? 'border-l-4 border-yellow-400 bg-yellow-50' : ''
                       }`}
                     >
                       <div className="p-4">
@@ -621,6 +689,11 @@ export default function ThongBaoPage() {
                                 {isQuoteNotif && (
                                   <p className="mt-1.5 text-xs text-blue-600 font-medium">
                                     Bấm để xem báo giá →
+                                  </p>
+                                )}
+                                {isReviewNotif && (
+                                  <p className="mt-1.5 text-xs text-yellow-800 font-semibold">
+                                    Bấm để xem đánh giá về tôi →
                                   </p>
                                 )}
                               </div>

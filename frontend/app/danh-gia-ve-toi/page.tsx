@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import AppShell from '@/app/components/AppShell'
 import Header from '@/app/components/Header'
@@ -11,6 +11,8 @@ import { ProfileService } from '@/lib/api/profile-new.service'
 
 export default function DanhGiaVeToiPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const highlightReviewId = searchParams.get('highlightReviewId') || null
   const [ready, setReady] = useState(false)
   const [providerId, setProviderId] = useState<string | null>(null)
   const [isProvider, setIsProvider] = useState(false)
@@ -76,7 +78,12 @@ export default function DanhGiaVeToiPage() {
             </div>
           )}
 
-          {isProvider && providerId && <ProviderReceivedReviewsPanel providerId={providerId} />}
+          {isProvider && providerId && (
+            <ProviderReceivedReviewsPanel
+              providerId={providerId}
+              highlightReviewId={highlightReviewId}
+            />
+          )}
         </main>
       </div>
     </AppShell>

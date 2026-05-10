@@ -3,8 +3,18 @@
 import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import {
+    faUser,
+    faComments,
+    faStar,
+    faBoxOpen,
+    faBookmark,
+    faRightFromBracket,
+    faFileLines,
+} from '@fortawesome/free-solid-svg-icons'
 import { AuthService } from '@/lib/api/auth.service'
-import { notificationService } from '@/lib/api/notification.service'
+import { notificationService, type Notification as AppNotification } from '@/lib/api/notification.service'
 import { chatService } from '@/lib/api/chat.service'
 import { notificationSocketService } from '@/lib/api/notification-socket.service'
 import { chatSocketService } from '@/lib/api/chat-socket.service'
@@ -32,8 +42,13 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
     const [avatarError, setAvatarError] = useState(false)
     const [showProfileMenu, setShowProfileMenu] = useState(false)
     const [showMessageMenu, setShowMessageMenu] = useState(false)
+    const [showNotificationMenu, setShowNotificationMenu] = useState(false)
     const [unreadNotificationCount, setUnreadNotificationCount] = useState(0)
     const [unreadMessageCount, setUnreadMessageCount] = useState(0)
+    const [notificationItems, setNotificationItems] = useState<AppNotification[]>([])
+    const [notificationFilter, setNotificationFilter] = useState<'all' | 'unread'>('all')
+    const [notificationLoading, setNotificationLoading] = useState(false)
+    const [notificationError, setNotificationError] = useState('')
     const [searchQuery, setSearchQuery] = useState('')
     const [showSearchResults, setShowSearchResults] = useState(false)
     const [searchResults, setSearchResults] = useState<HeaderSearchResult[]>([])
@@ -76,6 +91,236 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
             actionUrl.includes('/tin-nhan')
         )
     }
+
+    const isDirectRequestNotification = (notification: any) => {
+        const type = String(notification?.type || '').toLowerCase()
+        return type.includes('direct_request')
+    }
+
+    const isQuoteNotification = (notification: any) => {
+        if (isDirectRequestNotification(notification)) return false
+        const type = String(notification?.type || '').toLowerCase()
+        const title = String(notification?.title || '').toLowerCase()
+        const message = String(notification?.message || '').toLowerCase()
+        return (
+            type.includes('quote') ||
+            type.includes('bao_gia') ||
+            title.includes('báo giá') ||
+            message.includes('báo giá')
+        )
+    }
+
+    const isReviewNotification = (notification: any) => {
+        const type = String(notification?.type || '').toLowerCase()
+        const title = String(notification?.title || '').toLowerCase()
+        const message = String(notification?.message || '').toLowerCase()
+        const actionUrl = String(notification?.actionUrl || '').toLowerCase()
+
+        return (
+            type.includes('review') ||
+            title.includes('review') ||
+            title.includes('đánh giá') ||
+            message.includes('review') ||
+            message.includes('đánh giá') ||
+            actionUrl.includes('/reviews/') ||
+            actionUrl.includes('/danh-gia-ve-toi')
+        )
+    }
+
+    const extractPostIdFromActionUrl = (actionUrl: string) => {
+        const match = actionUrl.match(/^\/posts\/([^/]+)(?:\/quotes)?(?:\/)?(?:\?.*)?$/)
+        return match?.[1] || null
+    }
+
+    const extractReviewIdFromNotification = (notification: any) => {
+        const metadata = notification?.metadata || notification?.data || {}
+        const reviewId = String(
+            metadata.reviewId ||
+            metadata.review_id ||
+            metadata.id ||
+            metadata.entityId ||
+            metadata.review?.id ||
+            ''
+        ).trim()
+        if (reviewId) {
+            return reviewId
+        }
+
+        const actionUrl = String(notification?.actionUrl || '').trim()
+        if (!actionUrl) {
+            return null
+        }
+
+        const queryString = actionUrl.includes('?') ? actionUrl.split('?')[1] : ''
+        const queryParams = new URLSearchParams(queryString)
+        const reviewIdFromQuery = queryParams.get('reviewId') || queryParams.get('id')
+        if (reviewIdFromQuery?.trim()) {
+            return reviewIdFromQuery.trim()
+        }
+
+        const match = actionUrl.match(/\/reviews\/([^/?#]+)/i)
+        if (match?.[1]) {
+            return match[1]
+        }
+
+        const hashMatch = actionUrl.match(/#review-([^/?#]+)/i)
+        if (hashMatch?.[1]) {
+            return hashMatch[1]
+        }
+
+        return null
+    }
+
+    const getNotificationIcon = (type: string) => {
+        const t = (type || '').toLowerCase()
+        if (t.includes('direct_request_received')) return '📋'
+        if (t.includes('direct_request_accepted')) return '✅'
+        if (t.includes('direct_request_rejected')) return '❌'
+        if (t.includes('direct_request')) return '📋'
+        if (t.includes('new_quote') || t.includes('quote_received')) return '💰'
+        if (t.includes('quote_accepted_for_chat')) return '💬'
+        if (t.includes('quote_accepted')) return '✅'
+        if (t.includes('quote_rejected')) return '❌'
+        if (t.includes('quote_revised')) return '✏️'
+        if (t.includes('quote_cancelled')) return '🚫'
+        if (t.includes('quote')) return '💰'
+        if (t.includes('order_requested')) return '📦'
+        if (t.includes('order_awaiting')) return '⏳'
+        if (t.includes('order_created')) return '📦'
+        if (t.includes('order_completed')) return '🎉'
+        if (t.includes('order_cancelled')) return '🚫'
+        if (t.includes('order_in_progress')) return '🔨'
+        if (t.includes('order')) return '📦'
+        if (t.includes('message') || t.includes('chat')) return '💬'
+        if (t.includes('post')) return '📝'
+        if (t.includes('review')) return '⭐'
+        if (t.includes('payment_received')) return '💳'
+        if (t.includes('payment_failed')) return '⚠️'
+        if (t.includes('refund')) return '↩️'
+        if (t.includes('account_verified')) return '✅'
+        if (t.includes('account_suspended') || t.includes('account_warning')) return '⚠️'
+        if (t.includes('subscription')) return '🔑'
+        return '🔔'
+    }
+
+    const formatTime = (timestamp: string | Date) => {
+        const now = new Date()
+        const time = new Date(timestamp)
+        const diffInMs = now.getTime() - time.getTime()
+        const diffInMinutes = Math.floor(diffInMs / 60000)
+        const diffInHours = Math.floor(diffInMinutes / 60)
+        const diffInDays = Math.floor(diffInHours / 24)
+
+        if (diffInMinutes < 1) return 'Vừa xong'
+        if (diffInMinutes < 60) return `${diffInMinutes} phút trước`
+        if (diffInHours < 24) return `${diffInHours} giờ trước`
+        if (diffInDays < 7) return `${diffInDays} ngày trước`
+        return time.toLocaleDateString('vi-VN')
+    }
+
+    const loadHeaderNotifications = async () => {
+        try {
+            setNotificationLoading(true)
+            setNotificationError('')
+            const response = await notificationService.getNotifications({ limit: 20 })
+            const visibleNotifications = Array.isArray(response.notifications)
+                ? response.notifications.filter((notif) => !isMessageNotification(notif))
+                : []
+            setNotificationItems(visibleNotifications)
+            void loadUnreadNotificationCount()
+        } catch (error) {
+            console.error('Failed to load header notifications:', error)
+            setNotificationError('Không thể tải thông báo')
+        } finally {
+            setNotificationLoading(false)
+        }
+    }
+
+    const handleMarkNotificationAsRead = async (notificationId: string) => {
+        try {
+            await notificationService.markAsRead(notificationId)
+            let wasUnread = false
+
+            setNotificationItems(prev => prev.map((notif) => {
+                if (notif.id === notificationId) {
+                    if (!notif.isRead) {
+                        wasUnread = true
+                    }
+                    return { ...notif, isRead: true }
+                }
+                return notif
+            }))
+
+            if (wasUnread) {
+                const nextUnreadCount = Math.max(0, unreadNotificationCount - 1)
+                setUnreadNotificationCountSynced(nextUnreadCount)
+            }
+        } catch (error) {
+            console.error('Failed to mark notification as read:', error)
+        }
+    }
+
+    const resolveNotificationTarget = (notification: AppNotification) => {
+        if (isDirectRequestNotification(notification)) {
+            const metadata = notification.metadata || {}
+            const customRequestId = metadata.customRequestId || metadata.custom_request_id
+            if (customRequestId) {
+                return `/yeu-cau-rieng/${customRequestId}`
+            }
+
+            const actionUrl = String(notification.actionUrl || '').trim()
+            if (actionUrl) {
+                return actionUrl.replace(/^\/custom-requests\//, '/yeu-cau-rieng/')
+            }
+
+            return '/yeu-cau-rieng'
+        }
+
+        if (isReviewNotification(notification)) {
+            const reviewId = extractReviewIdFromNotification(notification)
+            if (reviewId) {
+                return `/danh-gia-ve-toi?highlightReviewId=${encodeURIComponent(reviewId)}`
+            }
+            return '/danh-gia-ve-toi'
+        }
+
+        if (isQuoteNotification(notification)) {
+            const metadata = notification.metadata || notification.data || {}
+            let postId = metadata.postId || metadata.post_id || metadata.postID
+            if (!postId && notification.actionUrl) {
+                postId = extractPostIdFromActionUrl(notification.actionUrl)
+            }
+            if (postId) {
+                return `/posts/${postId}`
+            }
+        }
+
+        const actionUrl = String(notification.actionUrl || '').trim()
+        if (actionUrl) {
+            return actionUrl.replace(/^\/custom-requests\//, '/yeu-cau-rieng/')
+        }
+
+        return '/thong-bao'
+    }
+
+    const handleNotificationClick = async (notification: AppNotification) => {
+        if (!notification.isRead) {
+            await handleMarkNotificationAsRead(notification.id)
+        }
+
+        setShowNotificationMenu(false)
+        router.push(resolveNotificationTarget(notification))
+    }
+
+    const visibleNotificationItems = notificationItems.filter((notif) => !isMessageNotification(notif))
+    const filteredNotificationItems = visibleNotificationItems.filter((notif) => {
+        if (notificationFilter === 'unread') {
+            return !notif.isRead
+        }
+        return true
+    })
+
+    const visibleNotificationUnreadCount = visibleNotificationItems.filter((notif) => !notif.isRead).length
 
     const loadUnreadNotificationCount = async () => {
         const response = await notificationService.getNotifications({ limit: 100, unreadOnly: true })
@@ -186,6 +431,11 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
 
     const quickAccessPath = isWorker ? '/gio-hang' : '/bai-dang-cua-toi'
     const schedulePath = '/don-hang'
+
+    const profileMenuItemClass =
+        'flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-foreground transition-colors hover:bg-slate-50'
+    const profileMenuIconClass = 'h-4 w-4 shrink-0 text-slate-900'
+    const profileMenuDividerClass = 'my-1 border-outline-variant/50'
 
     const navTextClass = (active: boolean) =>
         [
@@ -314,15 +564,18 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
             if (notification && !isMessageNotification(notification)) {
                 // Always sync from API to avoid badge drift on duplicated/missed socket events
                 void loadUnreadNotificationCount()
+                void loadHeaderNotifications()
             }
         })
 
         const unsubscribeNotifRead = notificationSocketService.on('notification:read', () => {
             void loadUnreadNotificationCount()
+            void loadHeaderNotifications()
         })
 
         const unsubscribeNotifAllRead = notificationSocketService.on('notification:all_read', () => {
             setUnreadNotificationCountSynced(0)
+            void loadHeaderNotifications()
         })
 
         const unsubscribeChatConnected = chatSocketService.on('connected', (data: { userId: string; unreadCount: number }) => {
@@ -366,6 +619,12 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
             })
         }
 
+        const handleNotificationMenuRefresh = () => {
+            void loadHeaderNotifications().catch((error) => {
+                console.error('Failed to refresh notification menu:', error)
+            })
+        }
+
         const handleWindowFocus = () => {
             void loadCounts()
         }
@@ -385,6 +644,7 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
         window.addEventListener('chat:unread-count-changed', handleUnreadChanged as EventListener)
         window.addEventListener('notification:unread-count-changed', handleNotificationUnreadChanged as EventListener)
         window.addEventListener('notification:refresh-unread-count', handleNotificationRefresh as EventListener)
+        window.addEventListener('notification:refresh-list', handleNotificationMenuRefresh)
         window.addEventListener('chat:refresh-unread-count', handleChatRefresh as EventListener)
         window.addEventListener('focus', handleWindowFocus)
 
@@ -398,11 +658,20 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
             window.removeEventListener('chat:unread-count-changed', handleUnreadChanged as EventListener)
             window.removeEventListener('notification:unread-count-changed', handleNotificationUnreadChanged as EventListener)
             window.removeEventListener('notification:refresh-unread-count', handleNotificationRefresh as EventListener)
+            window.removeEventListener('notification:refresh-list', handleNotificationMenuRefresh)
             window.removeEventListener('chat:refresh-unread-count', handleChatRefresh as EventListener)
             window.removeEventListener('focus', handleWindowFocus)
             clearInterval(interval)
         }
     }, [currentUser?.id, currentUser?.accountType, currentUser?.role])
+
+    useEffect(() => {
+        if (!showNotificationMenu) {
+            return
+        }
+
+        void loadHeaderNotifications()
+    }, [showNotificationMenu])
 
     const performSearch = async (query: string) => {
         if (!query.trim()) {
@@ -495,6 +764,9 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
             }
             if (!target.closest('.message-menu')) {
                 setShowMessageMenu(false)
+            }
+            if (!target.closest('.notification-menu')) {
+                setShowNotificationMenu(false)
             }
             if (!target.closest('.profile-menu')) {
                 setShowProfileMenu(false)
@@ -654,19 +926,131 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
 
                 <div className="ml-auto flex shrink-0 items-center gap-1 md:ml-0 md:gap-2">
                     {/* Notifications */}
-                    <Link
-                        href="/thong-bao"
-                        className="relative rounded-app-xl p-2.5 text-foreground-muted transition-all duration-app-fast hover:bg-brand-tint/60 hover:text-brand-dark hover:shadow-sm"
-                    >
-                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                        </svg>
-                        {unreadNotificationCount > 0 && (
-                            <span className="absolute right-0 top-0 inline-flex h-[22px] min-w-[22px] translate-x-1/2 -translate-y-1/2 transform items-center justify-center rounded-full bg-app-error px-1.5 text-xs font-bold leading-none text-white shadow-sm">
-                                {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
-                            </span>
+                    <div className="relative notification-menu">
+                        <button
+                            type="button"
+                            onClick={() => setShowNotificationMenu((prev) => !prev)}
+                            className="relative rounded-app-xl p-2.5 text-foreground-muted transition-all duration-app-fast hover:bg-brand-tint/60 hover:text-brand-dark hover:shadow-sm"
+                            aria-label="Mở thông báo"
+                            aria-expanded={showNotificationMenu}
+                        >
+                            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                            </svg>
+                            {unreadNotificationCount > 0 && (
+                                <span className="absolute right-0 top-0 inline-flex h-[22px] min-w-[22px] translate-x-1/2 -translate-y-1/2 transform items-center justify-center rounded-full bg-app-error px-1.5 text-xs font-bold leading-none text-white shadow-sm">
+                                    {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                                </span>
+                            )}
+                        </button>
+
+                        {showNotificationMenu && (
+                            <div className="absolute right-0 z-50 mt-2 w-[22rem] max-w-[calc(100vw-1rem)] rounded-[24px] border border-slate-200 bg-white/98 shadow-[0_18px_50px_rgba(15,23,42,0.14)] backdrop-blur-md">
+                                <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
+                                    <div>
+                                        <p className="text-base font-semibold text-slate-900">Thông báo</p>
+                                        <p className="text-xs text-slate-500">
+                                            {visibleNotificationUnreadCount > 0
+                                                ? `${visibleNotificationUnreadCount} thông báo chưa đọc`
+                                                : 'Không có thông báo chưa đọc'}
+                                        </p>
+                                    </div>
+                                    <Link
+                                        href="/thong-bao"
+                                        onClick={() => setShowNotificationMenu(false)}
+                                        className="rounded-full px-3 py-1.5 text-xs font-medium text-brand transition-colors hover:bg-brand-tint/60"
+                                    >
+                                        Xem tất cả
+                                    </Link>
+                                </div>
+
+                                <div className="flex gap-1 border-b border-slate-100 px-3 pt-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setNotificationFilter('all')}
+                                        className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${notificationFilter === 'all'
+                                            ? 'bg-brand text-white'
+                                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                            }`}
+                                    >
+                                        Tất cả
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setNotificationFilter('unread')}
+                                        className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${notificationFilter === 'unread'
+                                            ? 'bg-brand text-white'
+                                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                            }`}
+                                    >
+                                        Chưa đọc
+                                    </button>
+                                </div>
+
+                                <div className="max-h-[24rem] overflow-y-auto p-2">
+                                    {notificationLoading ? (
+                                        <div className="flex items-center justify-center px-4 py-10 text-sm text-slate-500">
+                                            Đang tải thông báo...
+                                        </div>
+                                    ) : notificationError ? (
+                                        <div className="px-4 py-6 text-center text-sm text-app-error">
+                                            {notificationError}
+                                        </div>
+                                    ) : filteredNotificationItems.length > 0 ? (
+                                        <div className="space-y-1.5">
+                                            {filteredNotificationItems.map((notification) => (
+                                                <button
+                                                    key={notification.id}
+                                                    type="button"
+                                                    onClick={() => void handleNotificationClick(notification)}
+                                                    className={`w-full rounded-2xl border px-3 py-3 text-left transition-all duration-app-fast hover:shadow-sm ${notification.isRead
+                                                        ? 'border-transparent bg-white hover:border-slate-200 hover:bg-slate-50'
+                                                        : 'border-sky-100 bg-sky-50/70 hover:border-sky-200 hover:bg-sky-50'
+                                                        }`}
+                                                >
+                                                    <div className="flex items-start gap-3">
+                                                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${notification.isRead ? 'bg-slate-100' : 'bg-sky-100'}`}>
+                                                            <span className="text-lg leading-none">
+                                                                {getNotificationIcon(notification.type)}
+                                                            </span>
+                                                        </div>
+
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="flex items-start gap-2">
+                                                                {!notification.isRead && (
+                                                                    <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-sky-500 shadow-sm" />
+                                                                )}
+                                                                <div className="min-w-0 flex-1">
+                                                                    <p className="truncate text-sm font-semibold text-slate-900">
+                                                                        {notification.title}
+                                                                    </p>
+                                                                    <p className="mt-0.5 line-clamp-2 text-sm text-slate-600">
+                                                                        {notification.message}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="mt-2 flex items-center justify-between gap-3 text-xs text-slate-500">
+                                                                <span>{formatTime(notification.createdAt)}</span>
+                                                                <span className="font-medium text-brand">
+                                                                    Bấm để mở
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="px-4 py-10 text-center text-sm text-slate-500">
+                                            {notificationFilter === 'unread'
+                                                ? 'Không có thông báo chưa đọc'
+                                                : 'Chưa có thông báo nào'}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         )}
-                    </Link>
+                    </div>
 
                     {/* Messages */}
                     <div className="relative message-menu">
@@ -696,58 +1080,65 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
                     <div className="relative profile-menu">
                         <button
                             onClick={() => setShowProfileMenu(!showProfileMenu)}
-                            className="flex items-center gap-2 rounded-app-xl border border-transparent p-1.5 transition-all duration-app-fast hover:border-outline-variant/40 hover:bg-brand-tint/50 hover:shadow-sm"
+                            className="flex items-center gap-2 rounded-full border border-[#28c7c1]/80 bg-white px-2 py-1.5 shadow-[0_2px_10px_rgba(15,23,42,0.06)] transition-all duration-app-fast hover:border-[#18b7b0] hover:shadow-[0_6px_18px_rgba(15,23,42,0.08)]"
                         >
                             {normalizeImageUrl(currentUser?.avatarUrl || currentUser?.avatar) && !avatarError ? (
                                 <img
                                     src={normalizeImageUrl(currentUser.avatarUrl || currentUser.avatar)}
                                     alt="Avatar"
-                                    className="w-8 h-8 rounded-full object-cover"
+                                    className="h-8 w-8 rounded-full object-cover ring-2 ring-white"
                                     onError={() => setAvatarError(true)}
                                 />
                             ) : (
-                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand-dark text-sm font-bold text-white">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand-dark text-sm font-bold text-white ring-2 ring-white">
                                     {(currentUser?.displayName || currentUser?.fullName || 'U').charAt(0).toUpperCase()}
                                 </div>
                             )}
-                            <svg className={`h-4 w-4 text-foreground-muted transition-transform duration-app-medium ${showProfileMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className={`h-4 w-4 text-slate-500 transition-transform duration-app-medium ${showProfileMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                             </svg>
                         </button>
                         {showProfileMenu && (
-                            <div className="absolute right-0 z-50 mt-2 w-52 rounded-app-xl border border-outline-variant/50 bg-surface/98 py-2 shadow-float backdrop-blur-md">
-                                <Link href="/profile" className="block px-4 py-2 text-sm text-foreground transition-colors hover:bg-brand-tint/70" onClick={() => setShowProfileMenu(false)}>
-                                    👤 Trang cá nhân
+                            <div className="absolute right-0 z-50 mt-3 w-60 overflow-hidden rounded-[24px] border border-slate-200 bg-white/98 py-2 shadow-[0_18px_50px_rgba(15,23,42,0.14)] backdrop-blur-md">
+                                <Link href="/profile" className={profileMenuItemClass} onClick={() => setShowProfileMenu(false)}>
+                                    <FontAwesomeIcon icon={faUser} className={profileMenuIconClass} />
+                                    <span>Trang cá nhân</span>
                                 </Link>
                                 {isWorker ? (
                                     <>
-                                        <Link href="/gio-hang" className="block px-4 py-2 text-sm text-foreground transition-colors hover:bg-brand-tint/70" onClick={() => setShowProfileMenu(false)}>
-                                            💬 Chào giá của tôi
+                                        <Link href="/gio-hang" className={profileMenuItemClass} onClick={() => setShowProfileMenu(false)}>
+                                            <FontAwesomeIcon icon={faComments} className={profileMenuIconClass} />
+                                            <span>Chào giá của tôi</span>
                                         </Link>
-                                        <Link href="/danh-gia-ve-toi" className="block px-4 py-2 text-sm text-foreground transition-colors hover:bg-brand-tint/70" onClick={() => setShowProfileMenu(false)}>
-                                            ⭐ Đánh giá về tôi
+                                        <Link href="/danh-gia-ve-toi" className={profileMenuItemClass} onClick={() => setShowProfileMenu(false)}>
+                                            <FontAwesomeIcon icon={faStar} className={profileMenuIconClass} />
+                                            <span>Đánh giá về tôi</span>
                                         </Link>
-                                        <Link href="/subscription" className="block px-4 py-2 text-sm text-foreground transition-colors hover:bg-brand-tint/70" onClick={() => setShowProfileMenu(false)}>
-                                            ✨ Gói của bạn
+                                        <Link href="/subscription" className={profileMenuItemClass} onClick={() => setShowProfileMenu(false)}>
+                                            <FontAwesomeIcon icon={faBoxOpen} className={profileMenuIconClass} />
+                                            <span>Gói của bạn</span>
                                         </Link>
                                     </>
                                 ) : (
-                                    <Link href="/bai-dang-cua-toi" className="block px-4 py-2 text-sm text-foreground transition-colors hover:bg-brand-tint/70" onClick={() => setShowProfileMenu(false)}>
-                                        📝 Bài đăng của tôi
+                                    <Link href="/bai-dang-cua-toi" className={profileMenuItemClass} onClick={() => setShowProfileMenu(false)}>
+                                        <FontAwesomeIcon icon={faFileLines} className={profileMenuIconClass} />
+                                        <span>Bài đăng của tôi</span>
                                     </Link>
                                 )}
-                                <Link href="/da-luu" className="block px-4 py-2 text-sm text-foreground transition-colors hover:bg-brand-tint/70" onClick={() => setShowProfileMenu(false)}>
-                                    💾 Đã lưu
+                                <Link href="/da-luu" className={profileMenuItemClass} onClick={() => setShowProfileMenu(false)}>
+                                    <FontAwesomeIcon icon={faBookmark} className={profileMenuIconClass} />
+                                    <span>Đã lưu</span>
                                 </Link>
-                                <hr className="my-2 border-outline-variant/50" />
+                                <hr className={profileMenuDividerClass} />
                                 <button
                                     onClick={async () => {
                                         await AuthService.logout()
                                         router.push('/dang-nhap')
                                     }}
-                                    className="w-full px-4 py-2 text-left text-sm text-app-error transition-colors hover:bg-red-50"
+                                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-app-error transition-colors hover:bg-red-50"
                                 >
-                                    🚪 Đăng xuất
+                                    <FontAwesomeIcon icon={faRightFromBracket} className="h-4 w-4 shrink-0" />
+                                    <span>Đăng xuất</span>
                                 </button>
                             </div>
                         )}
