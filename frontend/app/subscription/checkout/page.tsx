@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import AppShell from '@/app/components/AppShell'
-import Header from '@/app/components/Header'
 import { SubscriptionService, type PaymentCreationResult } from '@/lib/api/subscription.service'
 import { AuthService } from '@/lib/api/auth.service'
 
@@ -287,7 +286,6 @@ export default function CheckoutPage() {
   return (
     <AppShell>
       <div className="min-h-screen bg-surface-lowest">
-        <Header />
 
         <main className="app-container max-w-lg py-app-md">
           {/* Back */}

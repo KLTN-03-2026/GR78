@@ -23,6 +23,8 @@ export interface ProfileResponse {
     gender?: string
     isVerified?: boolean
     isActive?: boolean | null
+    certificationCount?: number
+    hasCertification?: boolean
     displayNameChangeInfo: DisplayNameChangeInfo
     createdAt?: Date | null
     updatedAt: Date

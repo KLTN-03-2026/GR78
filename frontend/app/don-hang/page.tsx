@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import AppShell from '@/app/components/AppShell'
-import Header from '@/app/components/Header'
 import { AuthService } from '@/lib/api/auth.service'
 import { ProfileService } from '@/lib/api/profile.service'
 import { orderService, type Order, type OrderStats } from '@/lib/api/order.service'
@@ -74,9 +73,6 @@ export default function DonHangPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('')
-  const [roleFilter, setRoleFilter] = useState<'customer' | 'provider' | ''>('')
-  const [orderNumberQuery, setOrderNumberQuery] = useState('')
-  const [searchingOrder, setSearchingOrder] = useState(false)
   const [viewerUserId, setViewerUserId] = useState<string | null>(null)
   const [confirmingQuoteId, setConfirmingQuoteId] = useState<string | null>(null)
   const [completingOrderId, setCompletingOrderId] = useState<string | null>(null)
@@ -124,7 +120,6 @@ export default function DonHangPage() {
 
       const response = await orderService.getOrders({
         status: statusFilter || undefined,
-        role: roleFilter || undefined,
         limit: 50
       })
       console.log('✅ [Orders Page] Orders fetched from API:', response)
@@ -263,12 +258,9 @@ export default function DonHangPage() {
   const isOrderCustomer = (order: Order) =>
     Boolean(viewerUserId && String(order.customerId) === String(viewerUserId))
 
-  const displayedOrders =
-    roleFilter === 'customer'
-      ? orders.filter((order) => isOrderCustomer(order))
-      : roleFilter === 'provider'
-        ? orders.filter((order) => isOrderProvider(order))
-        : orders
+  const filteredOrders = statusFilter
+    ? orders.filter((order) => orderStatusKey(order.status) === statusFilter)
+    : orders
 
   /** Đơn PENDING sau khi khách accept-quote-direct / request-order — thợ gọi confirm-from-quote */
   const handleProviderConfirmFromQuote = async (quoteId: string) => {
@@ -303,27 +295,6 @@ export default function DonHangPage() {
     } catch (err) {
       console.error('Error canceling order:', err)
       alert('Không thể hủy đơn hàng')
-    }
-  }
-
-  const handleSearchByOrderNumber = async () => {
-    const value = orderNumberQuery.trim()
-    if (!value) {
-      fetchOrders()
-      return
-    }
-
-    try {
-      setSearchingOrder(true)
-      setError('')
-      const order = await orderService.getOrderByNumber(value)
-      setOrders(order ? [order] : [])
-    } catch (err: any) {
-      console.error('Error searching order by number:', err)
-      setOrders([])
-      setError(err?.message || 'Không tìm thấy đơn hàng theo mã số')
-    } finally {
-      setSearchingOrder(false)
     }
   }
 
@@ -425,7 +396,6 @@ export default function DonHangPage() {
   return (
     <AppShell>
     <div className="flex h-screen flex-col overflow-hidden bg-surface-lowest">
-      <Header />
       <div className="flex-shrink-0 border-b border-outline-variant/60 bg-surface shadow-app-bar">
         <div className="app-container py-app-sm">
           <h1 className="mb-app-sm text-xl font-bold text-foreground">Quản lý đơn hàng</h1>
@@ -461,7 +431,7 @@ export default function DonHangPage() {
             <button
               onClick={() => setStatusFilter('')}
               className={`px-4 py-2 rounded-lg whitespace-nowrap ${
-                statusFilter === '' ? 'bg-orange-600 text-white' : 'bg-gray-200 text-gray-700'
+                statusFilter === '' ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white' : 'bg-gray-200 text-gray-700'
               }`}
             >
               Tất cả
@@ -469,7 +439,7 @@ export default function DonHangPage() {
             <button
               onClick={() => setStatusFilter('PENDING')}
               className={`px-4 py-2 rounded-lg whitespace-nowrap ${
-                statusFilter === 'PENDING' ? 'bg-orange-600 text-white' : 'bg-gray-200 text-gray-700'
+                statusFilter === 'PENDING' ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white' : 'bg-gray-200 text-gray-700'
               }`}
             >
               Đang chờ
@@ -477,7 +447,7 @@ export default function DonHangPage() {
             <button
               onClick={() => setStatusFilter('IN_PROGRESS')}
               className={`px-4 py-2 rounded-lg whitespace-nowrap ${
-                statusFilter === 'IN_PROGRESS' ? 'bg-orange-600 text-white' : 'bg-gray-200 text-gray-700'
+                statusFilter === 'IN_PROGRESS' ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white' : 'bg-gray-200 text-gray-700'
               }`}
             >
               Đang làm
@@ -485,7 +455,7 @@ export default function DonHangPage() {
             <button
               onClick={() => setStatusFilter('COMPLETED')}
               className={`px-4 py-2 rounded-lg whitespace-nowrap ${
-                statusFilter === 'COMPLETED' ? 'bg-orange-600 text-white' : 'bg-gray-200 text-gray-700'
+                statusFilter === 'COMPLETED' ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white' : 'bg-gray-200 text-gray-700'
               }`}
             >
               Hoàn thành
@@ -493,57 +463,13 @@ export default function DonHangPage() {
             <button
               onClick={() => setStatusFilter('CANCELLED')}
               className={`px-4 py-2 rounded-lg whitespace-nowrap ${
-                statusFilter === 'CANCELLED' ? 'bg-orange-600 text-white' : 'bg-gray-200 text-gray-700'
+                statusFilter === 'CANCELLED' ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white' : 'bg-gray-200 text-gray-700'
               }`}
             >
               Đã hủy
             </button>
           </div>
 
-          <div className="flex space-x-2 mt-2">
-            <button
-              onClick={() => setRoleFilter('')}
-              className={`px-4 py-2 rounded-lg text-sm ${
-                roleFilter === '' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
-              }`}
-            >
-              Tất cả vai trò
-            </button>
-            <button
-              onClick={() => setRoleFilter('customer')}
-              className={`px-4 py-2 rounded-lg text-sm ${
-                roleFilter === 'customer' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
-              }`}
-            >
-              Khách hàng
-            </button>
-            <button
-              onClick={() => setRoleFilter('provider')}
-              className={`px-4 py-2 rounded-lg text-sm ${
-                roleFilter === 'provider' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
-              }`}
-            >
-              Thợ
-            </button>
-          </div>
-
-          <div className="flex gap-2 mt-3">
-            <input
-              type="text"
-              value={orderNumberQuery}
-              onChange={(e) => setOrderNumberQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearchByOrderNumber()}
-              placeholder="Tìm theo mã đơn (vd: DH123456)"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
-            />
-            <button
-              onClick={handleSearchByOrderNumber}
-              disabled={searchingOrder}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-60"
-            >
-              {searchingOrder ? 'Đang tìm...' : 'Tra mã đơn'}
-            </button>
-          </div>
         </div>
       </div>
 
@@ -556,91 +482,7 @@ export default function DonHangPage() {
             </div>
           )}
 
-          {selectedOrder && (
-            <div className="bg-blue-50 border border-blue-200 text-blue-900 px-4 py-4 rounded-lg mb-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm text-blue-700">Chi tiết đơn hàng đã chọn</p>
-                  <h3 className="text-lg font-semibold mt-1">#{selectedOrder.orderNumber}</h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedOrder(null)}
-                  className="px-3 py-1.5 text-xs rounded-lg bg-white text-blue-700 border border-blue-200 hover:bg-blue-100"
-                >
-                  Đóng
-                </button>
-              </div>
-
-              <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                <div className="bg-white border border-blue-100 rounded-lg p-3">
-                  <p className="text-blue-700">Giá trị đơn</p>
-                  <p className="font-semibold mt-1">{selectedOrder.price.toLocaleString('vi-VN')}đ</p>
-                </div>
-                <div className="bg-white border border-blue-100 rounded-lg p-3">
-                  <p className="text-blue-700">Trạng thái</p>
-                  <p className="font-semibold mt-1">{getStatusText(selectedOrder.status, selectedOrder)}</p>
-                </div>
-                <div className="bg-white border border-blue-100 rounded-lg p-3">
-                  <p className="text-blue-700">Ngày tạo</p>
-                  <p className="font-semibold mt-1">{new Date(selectedOrder.createdAt).toLocaleString('vi-VN')}</p>
-                </div>
-              </div>
-
-              <div className="mt-3 bg-white border border-blue-100 rounded-lg p-3 text-sm text-gray-700">
-                {selectedOrder.description || 'Không có mô tả'}
-              </div>
-
-              {orderStatusKey(selectedOrder.status) === 'PENDING' &&
-                isOrderProvider(selectedOrder) &&
-                getQuoteIdFromOrder(selectedOrder) && (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleProviderConfirmFromQuote(String(getQuoteIdFromOrder(selectedOrder)))
-                      }
-                      disabled={confirmingQuoteId === getQuoteIdFromOrder(selectedOrder)}
-                      className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-60"
-                    >
-                      {confirmingQuoteId === getQuoteIdFromOrder(selectedOrder)
-                        ? 'Đang xác nhận...'
-                        : 'Xác nhận nhận việc'}
-                    </button>
-                  </div>
-                )}
-
-              {canProviderMarkWorkDone(selectedOrder) && isOrderProvider(selectedOrder) && (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleProviderComplete(selectedOrder.id)}
-                    disabled={completingOrderId === selectedOrder.id}
-                    className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-60"
-                  >
-                    {completingOrderId === selectedOrder.id ? 'Đang gửi...' : 'Đã làm xong việc'}
-                  </button>
-                </div>
-              )}
-
-              {canCustomerFinalizeOrder(selectedOrder) && isOrderCustomer(selectedOrder) && (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => openFinalizeModal(selectedOrder)}
-                    disabled={completingOrderId === selectedOrder.id}
-                    className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-60"
-                  >
-                    {completingOrderId === selectedOrder.id
-                      ? 'Đang gửi...'
-                      : 'Xác nhận đã xong & đánh giá'}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {displayedOrders.length === 0 ? (
+          {filteredOrders.length === 0 ? (
             <div className="bg-white rounded-lg shadow-sm p-8 text-center">
               <div className="text-6xl mb-4">📦</div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có đơn hàng</h3>
@@ -648,8 +490,9 @@ export default function DonHangPage() {
             </div>
           ) : (
             <div className="space-y-3">
-            {displayedOrders.map((order) => (
-              <div key={order.id} className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
+            {filteredOrders.map((order) => (
+              <div key={order.id}>
+              <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
                 <div className="p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
@@ -723,7 +566,7 @@ export default function DonHangPage() {
                         type="button"
                         onClick={() => handleProviderComplete(order.id)}
                         disabled={completingOrderId === order.id}
-                        className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white rounded-lg text-sm font-semibold"
+                        className="flex-1 px-4 py-2 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 disabled:opacity-60 text-white rounded-lg text-sm font-semibold"
                       >
                         {completingOrderId === order.id ? 'Đang gửi...' : 'Đã làm xong việc'}
                       </button>
@@ -751,6 +594,67 @@ export default function DonHangPage() {
                     )}
                   </div>
                 </div>
+              </div>
+              {selectedOrder?.id === order.id && (
+                <div className="bg-blue-50 border border-blue-200 text-blue-900 px-4 py-4 rounded-lg mt-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm text-blue-700">Chi tiết đơn hàng đã chọn</p>
+                      <h3 className="text-lg font-semibold mt-1">#{selectedOrder.orderNumber}</h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedOrder(null)}
+                      className="px-3 py-1.5 text-xs rounded-lg bg-white text-blue-700 border border-blue-200 hover:bg-blue-100"
+                    >
+                      Đóng
+                    </button>
+                  </div>
+                  <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                    <div className="bg-white border border-blue-100 rounded-lg p-3">
+                      <p className="text-blue-700">Giá trị đơn</p>
+                      <p className="font-semibold mt-1">{selectedOrder.price.toLocaleString('vi-VN')}đ</p>
+                    </div>
+                    <div className="bg-white border border-blue-100 rounded-lg p-3">
+                      <p className="text-blue-700">Trạng thái</p>
+                      <p className="font-semibold mt-1">{getStatusText(selectedOrder.status, selectedOrder)}</p>
+                    </div>
+                    <div className="bg-white border border-blue-100 rounded-lg p-3">
+                      <p className="text-blue-700">Ngày tạo</p>
+                      <p className="font-semibold mt-1">{new Date(selectedOrder.createdAt).toLocaleString('vi-VN')}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 bg-white border border-blue-100 rounded-lg p-3 text-sm text-gray-700">
+                    {selectedOrder.description || 'Không có mô tả'}
+                  </div>
+                  {orderStatusKey(selectedOrder.status) === 'PENDING' &&
+                    isOrderProvider(selectedOrder) &&
+                    getQuoteIdFromOrder(selectedOrder) && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleProviderConfirmFromQuote(String(getQuoteIdFromOrder(selectedOrder)))}
+                          disabled={confirmingQuoteId === getQuoteIdFromOrder(selectedOrder)}
+                          className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-60"
+                        >
+                          {confirmingQuoteId === getQuoteIdFromOrder(selectedOrder) ? 'Đang xác nhận...' : 'Xác nhận nhận việc'}
+                        </button>
+                      </div>
+                    )}
+                  {canCustomerFinalizeOrder(selectedOrder) && isOrderCustomer(selectedOrder) && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openFinalizeModal(selectedOrder)}
+                        disabled={completingOrderId === selectedOrder.id}
+                        className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-60"
+                      >
+                        {completingOrderId === selectedOrder.id ? 'Đang gửi...' : 'Xác nhận đã xong & đánh giá'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
               </div>
             ))}
           </div>

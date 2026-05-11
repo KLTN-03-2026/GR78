@@ -1,10 +1,9 @@
 'use client'
 
-import { useState, useEffect, type ReactNode } from 'react'
+import { useState, useEffect, useRef, type ReactNode } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import AppShell from '@/app/components/AppShell'
-import Header from '@/app/components/Header'
 import AppField from '@/app/components/ui/AppField'
 import AppTextarea from '@/app/components/ui/AppTextarea'
 import AppButton from '@/app/components/ui/AppButton'
@@ -53,6 +52,9 @@ export default function CreatePostPage() {
     budget: undefined,
     imageUrls: [],
   })
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [imagePreviews, setImagePreviews] = useState<string[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!AuthService.isAuthenticated()) {
@@ -118,7 +120,7 @@ export default function CreatePostPage() {
         result = await PostService.updatePost(editId, postData)
         alert('Cập nhật bài đăng thành công!')
       } else {
-        result = await PostService.createPost(postData)
+        result = await PostService.createPostWithFiles(postData, selectedFiles)
         alert('Tạo bài đăng thành công!')
       }
 
@@ -152,6 +154,22 @@ export default function CreatePostPage() {
     )
   }
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    const combined = [...selectedFiles, ...files].slice(0, 10)
+    setSelectedFiles(combined)
+    setImagePreviews(combined.map((f) => URL.createObjectURL(f)))
+    e.target.value = ''
+  }
+
+  const removeFile = (index: number) => {
+    URL.revokeObjectURL(imagePreviews[index])
+    const newFiles = selectedFiles.filter((_, i) => i !== index)
+    const newPreviews = imagePreviews.filter((_, i) => i !== index)
+    setSelectedFiles(newFiles)
+    setImagePreviews(newPreviews)
+  }
+
   const locIcon = (
     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -167,7 +185,6 @@ export default function CreatePostPage() {
   return (
     <AppShell>
       <div className="min-h-screen bg-surface-lowest py-app-lg">
-        <Header />
         <div className="app-container max-w-3xl">
           <div className="mb-app-md">
             <Link
@@ -252,6 +269,58 @@ export default function CreatePostPage() {
                   />
                 </div>
               </MobileFieldSection>
+
+              {!isEditMode && (
+                <MobileFieldSection
+                  title="Hình ảnh (tối đa 10)"
+                  icon={
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  }
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    multiple
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={selectedFiles.length >= 10}
+                    className="flex w-full items-center justify-center gap-2 rounded-app-lg border-2 border-dashed border-outline-variant/60 bg-surface px-app-sm py-4 text-sm text-foreground-muted transition hover:border-brand/50 hover:bg-brand-tint/10 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    {selectedFiles.length === 0 ? 'Chọn ảnh' : `Thêm ảnh (${selectedFiles.length}/10)`}
+                  </button>
+
+                  {imagePreviews.length > 0 && (
+                    <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4">
+                      {imagePreviews.map((src, i) => (
+                        <div key={src} className="group relative aspect-square overflow-hidden rounded-app-lg border border-outline-variant/40">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={src} alt={`Ảnh ${i + 1}`} className="h-full w-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => removeFile(i)}
+                            className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition group-hover:opacity-100"
+                            aria-label="Xóa ảnh"
+                          >
+                            <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </MobileFieldSection>
+              )}
 
               <div className="flex flex-col gap-3 border-t border-outline-variant/50 pt-app-md sm:flex-row">
                 <AppButton type="button" variant="outlined" className="flex-1" onClick={() => router.back()}>

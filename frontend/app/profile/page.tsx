@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import Header from '@/app/components/Header'
 import AppShell from '@/app/components/AppShell'
 import ProviderReceivedReviewsPanel from '@/app/components/ProviderReceivedReviewsPanel'
 import { ProfileService, ProfileResponse, UpdateProfileDto, UpdateContactDto, ChangeDisplayNameDto } from '@/lib/api/profile-new.service'
+import { CertificationService, CertificationResponse, UploadCertificationDto } from '@/lib/api/certification.service'
 import { PostService } from '@/lib/api/post.service'
 import { AuthService } from '@/lib/api/auth.service'
 import { UserService } from '@/lib/api/user.service'
@@ -18,6 +18,7 @@ type ProfileContentTab =
   | 'contact'
   | 'display-name'
   | 'avatar'
+  | 'certifications'
   | 'my-posts'
   | 'my-quotes'
   | 'provider-reviews'
@@ -39,6 +40,15 @@ export default function Profile() {
   const [editingPostId, setEditingPostId] = useState<string | null>(null)
   const [editPostForm, setEditPostForm] = useState<any>({})
   const [postsLoaded, setPostsLoaded] = useState(false)
+
+  // Certification states
+  const [certs, setCerts] = useState<CertificationResponse[]>([])
+  const [certsLoading, setCertsLoading] = useState(false)
+  const [certsLoaded, setCertsLoaded] = useState(false)
+  const [certError, setCertError] = useState('')
+  const [certUploading, setCertUploading] = useState(false)
+  const [certFile, setCertFile] = useState<File | null>(null)
+  const [certForm, setCertForm] = useState<UploadCertificationDto>({ title: '' })
 
   // Form states
   const [editForm, setEditForm] = useState<UpdateProfileDto>({})
@@ -311,6 +321,65 @@ export default function Profile() {
     setEditPostForm({})
   }
 
+  // Certification handlers
+  const loadCertifications = async () => {
+    try {
+      setCertsLoading(true)
+      setCertError('')
+      const res = await CertificationService.getMyCertifications()
+      setCerts(res.data)
+      setCertsLoaded(true)
+    } catch (err) {
+      setCertError(err instanceof Error ? err.message : 'Không thể tải danh sách chứng chỉ')
+    } finally {
+      setCertsLoading(false)
+    }
+  }
+
+  const handleUploadCertification = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!certFile) {
+      setCertError('Vui lòng chọn file PDF')
+      return
+    }
+    if (!certForm.title.trim()) {
+      setCertError('Tiêu đề chứng chỉ là bắt buộc')
+      return
+    }
+    try {
+      setCertUploading(true)
+      setCertError('')
+      const newCert = await CertificationService.uploadCertification(certForm, certFile)
+      setCerts(prev => [newCert, ...prev])
+      setCertForm({ title: '' })
+      setCertFile(null)
+      setProfile(prev => prev ? { ...prev, certificationCount: (prev.certificationCount ?? 0) + 1, hasCertification: true } : prev)
+      alert('✅ Tải lên chứng chỉ thành công. Chứng chỉ đang chờ xét duyệt.')
+    } catch (err) {
+      setCertError(err instanceof Error ? err.message : 'Không thể tải lên chứng chỉ')
+    } finally {
+      setCertUploading(false)
+    }
+  }
+
+  const handleDeleteCertification = async (certId: string) => {
+    if (!confirm('Bạn có chắc muốn xóa chứng chỉ này?')) return
+    try {
+      setCertError('')
+      await CertificationService.deleteCertification(certId)
+      const remaining = certs.filter(c => c.id !== certId)
+      setCerts(remaining)
+      setProfile(prev => prev ? {
+        ...prev,
+        certificationCount: Math.max((prev.certificationCount ?? 1) - 1, 0),
+        hasCertification: remaining.length > 0,
+      } : prev)
+      alert('✅ Xóa chứng chỉ thành công')
+    } catch (err) {
+      setCertError(err instanceof Error ? err.message : 'Không thể xóa chứng chỉ')
+    }
+  }
+
   const handleUpdatePost = async (postId: string) => {
     if (!editPostForm.title || !editPostForm.description) {
       alert('Vui lòng điền tiêu đề và mô tả')
@@ -365,6 +434,7 @@ export default function Profile() {
     { key: 'avatar', label: 'Ảnh đại diện' },
     ...(isProviderUser
       ? [
+          { key: 'certifications' as const, label: 'Chứng chỉ' },
           { key: 'my-quotes' as const, label: 'Chào giá của tôi' },
           { key: 'provider-reviews' as const, label: 'Đánh giá về tôi' },
         ]
@@ -376,7 +446,6 @@ export default function Profile() {
     <AppShell>
     <div className="flex min-h-screen flex-col bg-surface-lowest">
       {/* Header */}
-      <Header />
 
       <div className="flex-1">
         {/* Back Button */}
@@ -420,6 +489,9 @@ export default function Profile() {
                     setActiveTab(tab.key)
                     if (tab.key === 'my-posts' && !postsLoaded) {
                       loadMyPosts()
+                    }
+                    if (tab.key === 'certifications' && !certsLoaded) {
+                      loadCertifications()
                     }
                   }}
                   className={`px-4 py-3 text-sm font-medium transition whitespace-nowrap ${activeTab === tab.key
@@ -497,6 +569,42 @@ export default function Profile() {
                     <p className="text-lg text-gray-800">{profile.bio || 'Chưa cập nhật'}</p>
                   </div>
                 </div>
+
+                {/* Verified provider badge */}
+                {isProviderUser && (
+                  <div className={`flex items-center gap-3 rounded-lg px-4 py-3 ${profile.hasCertification ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200'}`}>
+                    {profile.hasCertification ? (
+                      <>
+                        <span className="flex-shrink-0 w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        </span>
+                        <div>
+                          <p className="font-semibold text-green-800 text-sm">Tài khoản đã xác minh chứng chỉ</p>
+                          <p className="text-green-700 text-xs">Bạn đã tải lên {profile.certificationCount} chứng chỉ nghề nghiệp</p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center">
+                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-3-3v6M12 3a9 9 0 110 18A9 9 0 0112 3z" />
+                          </svg>
+                        </span>
+                        <div>
+                          <p className="font-semibold text-gray-700 text-sm">Chưa có chứng chỉ nghề nghiệp</p>
+                          <button
+                            onClick={() => { setActiveTab('certifications'); if (!certsLoaded) loadCertifications() }}
+                            className="text-blue-600 underline text-xs hover:text-blue-700"
+                          >
+                            Tải lên chứng chỉ để nhận dấu xác minh
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
 
                 <div className="border-t pt-6">
                   <div className="grid grid-cols-2 gap-4 text-sm">
@@ -1019,6 +1127,181 @@ export default function Profile() {
                             </div>
                           </div>
                         )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Certifications Tab */}
+            {activeTab === 'certifications' && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-1">Chứng chỉ nghề nghiệp</h3>
+                  <p className="text-sm text-gray-500">
+                    Tải lên chứng chỉ (PDF, tối đa 10MB). Tài khoản có ít nhất 1 chứng chỉ sẽ hiển thị
+                    dấu xác minh <span className="inline-flex items-center gap-1 text-green-700 font-medium">
+                      <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      uy tín
+                    </span>.
+                  </p>
+                </div>
+
+                {certError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                    {certError}
+                  </div>
+                )}
+
+                {/* Upload form */}
+                <form
+                  onSubmit={handleUploadCertification}
+                  className="bg-blue-50 border border-blue-200 rounded-lg p-5 space-y-4"
+                >
+                  <h4 className="font-semibold text-blue-900">Tải lên chứng chỉ mới</h4>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tiêu đề chứng chỉ <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={certForm.title}
+                      onChange={e => setCertForm(f => ({ ...f, title: e.target.value }))}
+                      maxLength={200}
+                      placeholder="VD: Chứng chỉ hành nghề điện hạng A"
+                      className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500 text-sm"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Cơ quan cấp</label>
+                    <input
+                      type="text"
+                      value={certForm.issuingOrganization ?? ''}
+                      onChange={e => setCertForm(f => ({ ...f, issuingOrganization: e.target.value || undefined }))}
+                      maxLength={200}
+                      placeholder="VD: Sở Xây Dựng TP.HCM"
+                      className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500 text-sm"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Ngày cấp</label>
+                      <input
+                        type="date"
+                        value={certForm.issueDate ?? ''}
+                        onChange={e => setCertForm(f => ({ ...f, issueDate: e.target.value || undefined }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Ngày hết hạn</label>
+                      <input
+                        type="date"
+                        value={certForm.expiryDate ?? ''}
+                        onChange={e => setCertForm(f => ({ ...f, expiryDate: e.target.value || undefined }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500 text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      File PDF <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      onChange={e => setCertFile(e.target.files?.[0] ?? null)}
+                      className="w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                      required
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Chỉ chấp nhận PDF, tối đa 10MB</p>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={certUploading}
+                    className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:bg-gray-400 text-sm font-medium"
+                  >
+                    {certUploading ? 'Đang tải lên...' : 'Tải lên chứng chỉ'}
+                  </button>
+                </form>
+
+                {/* Certificate list */}
+                {certsLoading && (
+                  <div className="text-center py-6 text-gray-500 text-sm">Đang tải danh sách chứng chỉ...</div>
+                )}
+
+                {!certsLoading && certs.length === 0 && (
+                  <div className="text-center py-8 text-gray-400 text-sm">
+                    Bạn chưa có chứng chỉ nào. Hãy tải lên chứng chỉ đầu tiên của bạn.
+                  </div>
+                )}
+
+                {certs.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-gray-700">Danh sách chứng chỉ ({certs.length}/10)</h4>
+                    {certs.map(cert => (
+                      <div key={cert.id} className="border rounded-lg p-4 bg-white flex flex-col gap-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-gray-800 truncate">{cert.title}</p>
+                            {cert.issuingOrganization && (
+                              <p className="text-sm text-gray-500">{cert.issuingOrganization}</p>
+                            )}
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 mt-1">
+                              {cert.issueDate && (
+                                <span>Ngày cấp: {new Date(cert.issueDate).toLocaleDateString('vi-VN')}</span>
+                              )}
+                              {cert.expiryDate && (
+                                <span className={cert.isExpired ? 'text-red-500' : ''}>
+                                  Hết hạn: {new Date(cert.expiryDate).toLocaleDateString('vi-VN')}
+                                  {cert.isExpired && ' (Đã hết hạn)'}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <span className={`flex-shrink-0 text-xs font-medium px-2 py-1 rounded ${CertificationService.statusClasses(cert.verificationStatus)}`}>
+                            {CertificationService.statusLabel(cert.verificationStatus)}
+                          </span>
+                        </div>
+
+                        {cert.rejectionReason && (
+                          <p className="text-xs text-red-600 bg-red-50 rounded px-3 py-2">
+                            Lý do từ chối: {cert.rejectionReason}
+                          </p>
+                        )}
+
+                        <div className="flex gap-2 flex-wrap">
+                          <a
+                            href={cert.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            Xem file PDF
+                          </a>
+                          <button
+                            onClick={() => handleDeleteCertification(cert.id)}
+                            className="text-sm text-red-600 hover:text-red-700 flex items-center gap-1"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Xóa
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

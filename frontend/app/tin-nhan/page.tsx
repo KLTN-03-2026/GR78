@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import Header from '@/app/components/Header'
 import AppShell from '@/app/components/AppShell'
 import { chatService, type Conversation, type Message } from '@/lib/api/chat.service'
 import { ProfileService } from '@/lib/api/profile.service'
@@ -869,9 +868,6 @@ export default function TinNhanPage() {
   return (
     <AppShell>
     <div className="flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden bg-surface-lowest">
-      {/* Header */}
-      <Header currentUser={currentUser} />
-
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Sidebar - Conversation List */}
         <div className="w-full md:w-96 bg-white border-r flex h-full min-h-0 flex-col overflow-hidden">

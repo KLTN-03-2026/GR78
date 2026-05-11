@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Header from '@/app/components/Header'
 import AppShell from '@/app/components/AppShell'
 import { AuthService } from '@/lib/api/auth.service'
 import { notificationService, type Notification } from '@/lib/api/notification.service'
@@ -564,7 +563,6 @@ export default function ThongBaoPage() {
     <AppShell>
     <div className="flex min-h-screen flex-col bg-surface-lowest">
       {/* Header */}
-      <Header />
 
       {/* Notifications Page Content */}
       <div className="flex-1">

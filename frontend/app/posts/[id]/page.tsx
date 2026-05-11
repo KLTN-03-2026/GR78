@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
-import Header from '@/app/components/Header'
 import AppShell from '@/app/components/AppShell'
 import { AuthService } from '@/lib/api/auth.service'
 import { PostService } from '@/lib/api/post.service'
@@ -202,7 +201,6 @@ export default function PostDetailPage() {
     <AppShell>
     <div className="flex min-h-screen flex-col bg-surface-lowest">
       {/* Header */}
-      <Header />
 
       {quoteSuccessMessage && (
         <div className="fixed top-24 right-4 z-[70] max-w-sm w-[calc(100%-2rem)]">

@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import AppShell from '@/app/components/AppShell'
-import Header from '@/app/components/Header'
 import TradeFilter from '@/app/components/SearchFilters/TradeFilter'
 import ProvinceFilter from '@/app/components/SearchFilters/ProvinceFilter'
 import SortFilter from '@/app/components/SearchFilters/SortFilter'
@@ -257,7 +256,6 @@ export default function SearchPage() {
   return (
     <AppShell>
       <div className="min-h-screen bg-surface-lowest">
-        <Header />
 
         <main className="app-container py-app-md">
           {/* Page heading */}

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import Header from '@/app/components/Header'
 import AppShell from '@/app/components/AppShell'
 import { ProfileService, PublicProfileResponse } from '@/lib/api/profile-new.service'
 import { PostService } from '@/lib/api/post.service'
@@ -101,7 +100,6 @@ export default function PublicProfile() {
         <AppShell>
         <div className="flex min-h-screen flex-col bg-surface-lowest">
             {/* Header */}
-            <Header />
 
             <div className="flex-1">
                 <div className="max-w-4xl mx-auto px-4 py-8">

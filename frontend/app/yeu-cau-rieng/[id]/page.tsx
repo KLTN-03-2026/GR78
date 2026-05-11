@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import AppShell from '@/app/components/AppShell'
-import Header from '@/app/components/Header'
 import { AuthService } from '@/lib/api/auth.service'
 import { ProfileService } from '@/lib/api/profile-new.service'
 import {
@@ -201,11 +200,14 @@ export default function CustomRequestDetailPage() {
     if (!acceptDesc.trim()) { setAcceptError('Vui lòng mô tả phạm vi công việc.'); return }
     try {
       setAccepting(true)
+      const scheduledLine = acceptDuration
+        ? `Thời gian đến làm: ${new Date(acceptDuration).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}`
+        : ''
+      const finalTerms = [scheduledLine, acceptTerms.trim()].filter(Boolean).join('\n') || undefined
       const updated = await customRequestService.accept(requestId, {
         acceptedPrice: price,
         quoteDescription: acceptDesc.trim(),
-        estimatedDuration: acceptDuration ? parseInt(acceptDuration) : undefined,
-        terms: acceptTerms.trim() || undefined,
+        terms: finalTerms,
       })
       setRequest(updated)
       setShowAcceptModal(false)
@@ -321,7 +323,6 @@ export default function CustomRequestDetailPage() {
   if (error || !request) {
     return (
       <AppShell>
-        <Header />
         <div className="max-w-lg mx-auto px-4 py-16 text-center">
           <p className="text-red-600 mb-4">{error || 'Không tìm thấy yêu cầu'}</p>
           <button onClick={() => router.back()} className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
@@ -350,7 +351,6 @@ export default function CustomRequestDetailPage() {
   return (
     <AppShell>
       <div className="flex min-h-screen flex-col bg-surface-lowest">
-        <Header />
 
         <div className="flex-1">
           <div className="max-w-2xl mx-auto px-4 py-8">
@@ -649,66 +649,66 @@ export default function CustomRequestDetailPage() {
           onClick={(e) => { if (e.target === e.currentTarget) setShowAcceptModal(false) }}
         >
           <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">Chấp nhận &amp; gửi báo giá</h2>
-              <button onClick={() => setShowAcceptModal(false)} disabled={accepting} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+            {/* Header — matches "Chào giá cho bài đăng" brand color */}
+            <div className="flex items-center gap-3 bg-[#0D9488] px-6 py-4 text-white rounded-t-2xl">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+              </span>
+              <h2 className="flex-1 text-lg font-bold">Chấp nhận &amp; gửi báo giá</h2>
+              <button onClick={() => setShowAcceptModal(false)} disabled={accepting} className="text-white/70 hover:text-white text-xl leading-none">✕</button>
             </div>
             <form onSubmit={handleAcceptRequest} className="p-6 space-y-4">
               {acceptError && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">{acceptError}</div>
               )}
               <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1.5">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5">
                   Giá báo (VNĐ) <span className="text-red-500">*</span>
                 </label>
-                {request.budget && (
-                  <p className="text-xs text-gray-500 mb-1">
-                    Ngân sách khách: {Number(request.budget).toLocaleString('vi-VN')} VNĐ
-                  </p>
-                )}
                 <input
                   type="number" value={acceptPrice} onChange={(e) => setAcceptPrice(e.target.value)}
                   min={1} placeholder="500000" required
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                 />
                 {acceptPrice && !isNaN(parseFloat(acceptPrice)) && (
                   <p className="text-xs text-gray-500 mt-1">≈ {parseFloat(acceptPrice).toLocaleString('vi-VN')} VNĐ</p>
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1.5">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5">
                   Mô tả phạm vi công việc <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   rows={4} value={acceptDesc} onChange={(e) => setAcceptDesc(e.target.value)}
                   maxLength={2000} placeholder="Mô tả chi tiết những gì bạn sẽ thực hiện..." required
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 resize-none"
                 />
                 <p className="text-xs text-gray-400 mt-0.5 text-right">{acceptDesc.length}/2000</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1.5">Thời gian ước tính (phút)</label>
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5">Thời gian đến làm</label>
                 <input
-                  type="number" value={acceptDuration} onChange={(e) => setAcceptDuration(e.target.value)}
-                  min={1} placeholder="120"
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  type="datetime-local" value={acceptDuration} onChange={(e) => setAcceptDuration(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1.5">Điều khoản (tùy chọn)</label>
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5">Điều khoản (tùy chọn)</label>
                 <textarea
                   rows={2} value={acceptTerms} onChange={(e) => setAcceptTerms(e.target.value)}
                   maxLength={1000} placeholder="Ví dụ: Bao gồm vật liệu; không bao gồm sơn lại..."
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 resize-none"
                 />
               </div>
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-2 border-t border-gray-100">
                 <button type="button" onClick={() => setShowAcceptModal(false)} disabled={accepting}
                   className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
                   Hủy
                 </button>
                 <button type="submit" disabled={accepting}
-                  className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 disabled:opacity-60 flex items-center justify-center gap-2">
+                  className="flex-1 px-4 py-2.5 bg-[#0D9488] text-white rounded-lg text-sm font-semibold hover:bg-[#0F766E] disabled:opacity-60 flex items-center justify-center gap-2">
                   {accepting ? (
                     <><span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />Đang gửi...</>
                   ) : 'Gửi báo giá'}

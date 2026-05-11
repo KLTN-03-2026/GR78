@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import AppShell from '@/app/components/AppShell'
-import Header from '@/app/components/Header'
 import {
   SubscriptionService,
   type SubscriptionPlan,
@@ -386,7 +385,6 @@ export default function SubscriptionPage() {
   return (
     <AppShell>
       <div className="min-h-screen bg-surface-lowest">
-        <Header />
 
         <main className="app-container max-w-3xl py-app-md">
           {/* Page header */}

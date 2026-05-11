@@ -41,7 +41,6 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
     const [currentUser, setCurrentUser] = useState<any>(initialUser)
     const [avatarError, setAvatarError] = useState(false)
     const [showProfileMenu, setShowProfileMenu] = useState(false)
-    const [showMessageMenu, setShowMessageMenu] = useState(false)
     const [showNotificationMenu, setShowNotificationMenu] = useState(false)
     const [unreadNotificationCount, setUnreadNotificationCount] = useState(0)
     const [unreadMessageCount, setUnreadMessageCount] = useState(0)
@@ -433,9 +432,9 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
     const schedulePath = '/don-hang'
 
     const profileMenuItemClass =
-        'flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-foreground transition-colors hover:bg-slate-50'
-    const profileMenuIconClass = 'h-4 w-4 shrink-0 text-slate-900'
-    const profileMenuDividerClass = 'my-1 border-outline-variant/50'
+        'flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-white transition-colors hover:bg-white/20'
+    const profileMenuIconClass = 'h-4 w-4 shrink-0 text-white'
+    const profileMenuDividerClass = 'my-1 border-white/30'
 
     const navTextClass = (active: boolean) =>
         [
@@ -762,9 +761,6 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
             if (!target.closest('.search-container')) {
                 setShowSearchResults(false)
             }
-            if (!target.closest('.message-menu')) {
-                setShowMessageMenu(false)
-            }
             if (!target.closest('.notification-menu')) {
                 setShowNotificationMenu(false)
             }
@@ -821,14 +817,6 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
                     <Link href={schedulePath} className={navTextClass(pathname.startsWith('/don-hang'))}>
                         Đơn hàng
                     </Link>
-                    {isWorker && (
-                        <Link
-                            href="/danh-gia-ve-toi"
-                            className={navTextClass(pathname.startsWith('/danh-gia-ve-toi'))}
-                        >
-                            Đánh giá
-                        </Link>
-                    )}
                     {isWorker && (
                         <Link
                             href="/subscription"
@@ -945,11 +933,11 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
                         </button>
 
                         {showNotificationMenu && (
-                            <div className="absolute right-0 z-50 mt-2 w-[22rem] max-w-[calc(100vw-1rem)] rounded-[24px] border border-slate-200 bg-white/98 shadow-[0_18px_50px_rgba(15,23,42,0.14)] backdrop-blur-md">
-                                <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
+                            <div className="absolute right-0 z-50 mt-2 w-[22rem] max-w-[calc(100vw-1rem)] rounded-[24px] border border-teal-500/30 bg-gradient-to-r from-teal-600 to-cyan-600 shadow-[0_18px_50px_rgba(15,23,42,0.14)]">
+                                <div className="flex items-start justify-between gap-3 border-b border-white/30 px-4 py-3">
                                     <div>
-                                        <p className="text-base font-semibold text-slate-900">Thông báo</p>
-                                        <p className="text-xs text-slate-500">
+                                        <p className="text-base font-semibold text-white">Thông báo</p>
+                                        <p className="text-xs text-white/80">
                                             {visibleNotificationUnreadCount > 0
                                                 ? `${visibleNotificationUnreadCount} thông báo chưa đọc`
                                                 : 'Không có thông báo chưa đọc'}
@@ -958,19 +946,19 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
                                     <Link
                                         href="/thong-bao"
                                         onClick={() => setShowNotificationMenu(false)}
-                                        className="rounded-full px-3 py-1.5 text-xs font-medium text-brand transition-colors hover:bg-brand-tint/60"
+                                        className="rounded-full px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/20"
                                     >
                                         Xem tất cả
                                     </Link>
                                 </div>
 
-                                <div className="flex gap-1 border-b border-slate-100 px-3 pt-3">
+                                <div className="flex gap-1 border-b border-white/30 px-3 pt-3">
                                     <button
                                         type="button"
                                         onClick={() => setNotificationFilter('all')}
                                         className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${notificationFilter === 'all'
-                                            ? 'bg-brand text-white'
-                                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                            ? 'bg-white text-teal-700'
+                                            : 'bg-white/20 text-white hover:bg-white/30'
                                             }`}
                                     >
                                         Tất cả
@@ -979,8 +967,8 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
                                         type="button"
                                         onClick={() => setNotificationFilter('unread')}
                                         className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${notificationFilter === 'unread'
-                                            ? 'bg-brand text-white'
-                                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                            ? 'bg-white text-teal-700'
+                                            : 'bg-white/20 text-white hover:bg-white/30'
                                             }`}
                                     >
                                         Chưa đọc
@@ -989,11 +977,11 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
 
                                 <div className="max-h-[24rem] overflow-y-auto p-2">
                                     {notificationLoading ? (
-                                        <div className="flex items-center justify-center px-4 py-10 text-sm text-slate-500">
+                                        <div className="flex items-center justify-center px-4 py-10 text-sm text-white/80">
                                             Đang tải thông báo...
                                         </div>
                                     ) : notificationError ? (
-                                        <div className="px-4 py-6 text-center text-sm text-app-error">
+                                        <div className="px-4 py-6 text-center text-sm text-white/90">
                                             {notificationError}
                                         </div>
                                     ) : filteredNotificationItems.length > 0 ? (
@@ -1004,12 +992,12 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
                                                     type="button"
                                                     onClick={() => void handleNotificationClick(notification)}
                                                     className={`w-full rounded-2xl border px-3 py-3 text-left transition-all duration-app-fast hover:shadow-sm ${notification.isRead
-                                                        ? 'border-transparent bg-white hover:border-slate-200 hover:bg-slate-50'
-                                                        : 'border-sky-100 bg-sky-50/70 hover:border-sky-200 hover:bg-sky-50'
+                                                        ? 'border-transparent bg-white/10 hover:border-white/30 hover:bg-white/20'
+                                                        : 'border-white/30 bg-white/20 hover:border-white/40 hover:bg-white/30'
                                                         }`}
                                                 >
                                                     <div className="flex items-start gap-3">
-                                                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${notification.isRead ? 'bg-slate-100' : 'bg-sky-100'}`}>
+                                                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${notification.isRead ? 'bg-white/20' : 'bg-white/30'}`}>
                                                             <span className="text-lg leading-none">
                                                                 {getNotificationIcon(notification.type)}
                                                             </span>
@@ -1018,20 +1006,20 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
                                                         <div className="min-w-0 flex-1">
                                                             <div className="flex items-start gap-2">
                                                                 {!notification.isRead && (
-                                                                    <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-sky-500 shadow-sm" />
+                                                                    <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-white shadow-sm" />
                                                                 )}
                                                                 <div className="min-w-0 flex-1">
-                                                                    <p className="truncate text-sm font-semibold text-slate-900">
+                                                                    <p className="truncate text-sm font-semibold text-white">
                                                                         {notification.title}
                                                                     </p>
-                                                                    <p className="mt-0.5 line-clamp-2 text-sm text-slate-600">
+                                                                    <p className="mt-0.5 line-clamp-2 text-sm text-white/80">
                                                                         {notification.message}
                                                                     </p>
                                                                 </div>
                                                             </div>
-                                                            <div className="mt-2 flex items-center justify-between gap-3 text-xs text-slate-500">
+                                                            <div className="mt-2 flex items-center justify-between gap-3 text-xs text-white/70">
                                                                 <span>{formatTime(notification.createdAt)}</span>
-                                                                <span className="font-medium text-brand">
+                                                                <span className="font-medium text-white/90">
                                                                     Bấm để mở
                                                                 </span>
                                                             </div>
@@ -1041,7 +1029,7 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="px-4 py-10 text-center text-sm text-slate-500">
+                                        <div className="px-4 py-10 text-center text-sm text-white/80">
                                             {notificationFilter === 'unread'
                                                 ? 'Không có thông báo chưa đọc'
                                                 : 'Chưa có thông báo nào'}
@@ -1054,9 +1042,9 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
 
                     {/* Messages */}
                     <div className="relative message-menu">
-                        <button
-                            onClick={() => setShowMessageMenu(!showMessageMenu)}
-                            className="relative rounded-app-xl p-2.5 text-foreground-muted transition-all duration-app-fast hover:bg-brand-tint/60 hover:text-brand-dark hover:shadow-sm"
+                        <Link
+                            href="/tin-nhan"
+                            className="relative rounded-app-xl p-2.5 text-foreground-muted transition-all duration-app-fast hover:bg-brand-tint/60 hover:text-brand-dark hover:shadow-sm inline-flex"
                         >
                             <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -1066,14 +1054,7 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
                                     {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
                                 </span>
                             )}
-                        </button>
-                        {showMessageMenu && (
-                            <div className="absolute right-0 z-50 mt-2 w-52 rounded-app-xl border border-outline-variant/50 bg-surface/98 p-1.5 shadow-float backdrop-blur-md">
-                                <Link href="/tin-nhan" className="block w-full rounded-app-md px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-brand-tint/70" onClick={() => setShowMessageMenu(false)}>
-                                    Xem tin nhắn
-                                </Link>
-                            </div>
-                        )}
+                        </Link>
                     </div>
 
                     {/* Profile Menu */}
@@ -1099,7 +1080,7 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
                             </svg>
                         </button>
                         {showProfileMenu && (
-                            <div className="absolute right-0 z-50 mt-3 w-60 overflow-hidden rounded-[24px] border border-slate-200 bg-white/98 py-2 shadow-[0_18px_50px_rgba(15,23,42,0.14)] backdrop-blur-md">
+                            <div className="absolute right-0 z-50 mt-3 w-60 overflow-hidden rounded-[24px] border border-teal-500/30 bg-gradient-to-r from-teal-600 to-cyan-600 py-2 shadow-[0_18px_50px_rgba(15,23,42,0.14)]">
                                 <Link href="/profile" className={profileMenuItemClass} onClick={() => setShowProfileMenu(false)}>
                                     <FontAwesomeIcon icon={faUser} className={profileMenuIconClass} />
                                     <span>Trang cá nhân</span>
@@ -1135,7 +1116,7 @@ export default function Header({ currentUser: initialUser }: HeaderProps) {
                                         await AuthService.logout()
                                         router.push('/dang-nhap')
                                     }}
-                                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-app-error transition-colors hover:bg-red-50"
+                                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-white/90 transition-colors hover:bg-white/20"
                                 >
                                     <FontAwesomeIcon icon={faRightFromBracket} className="h-4 w-4 shrink-0" />
                                     <span>Đăng xuất</span>

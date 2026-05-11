@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AppShell from '@/app/components/AppShell'
-import Header from '@/app/components/Header'
 import { AuthService } from '@/lib/api/auth.service'
 import { ProfileService } from '@/lib/api/profile-new.service'
 import {
@@ -265,7 +264,6 @@ export default function YeuCauRiengPage() {
   return (
     <AppShell>
       <div className="flex min-h-screen flex-col bg-surface-lowest">
-        <Header />
 
         <div className="flex-shrink-0 border-b border-outline-variant/60 bg-surface shadow-app-bar">
           <div className="max-w-3xl mx-auto px-4 py-4">
