@@ -256,7 +256,10 @@ function CancelDialog({
 export default function SubscriptionPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const paymentSuccess = searchParams.get('payment') === 'success'
+  const paymentParam = searchParams.get('payment')
+  const paymentSuccess = paymentParam === 'success'
+  const paymentProcessing = paymentParam === 'processing'
+  const paymentFailed = paymentParam === 'failed'
 
   const [status, setStatus] = useState<SubscriptionStatusSummary | null>(null)
   const [plans, setPlans] = useState<SubscriptionPlan[]>([])
@@ -395,7 +398,7 @@ export default function SubscriptionPage() {
             </p>
           </div>
 
-          {/* Payment success banner */}
+          {/* Payment result banners */}
           {paymentSuccess && (
             <div className="mb-app-md rounded-app-xl border border-green-300 bg-green-50 px-app-md py-app-sm">
               <p className="flex items-center gap-2 font-semibold text-green-800">
@@ -403,7 +406,29 @@ export default function SubscriptionPage() {
                 Thanh toán thành công! Gói của bạn đang được kích hoạt.
               </p>
               <p className="mt-0.5 text-sm text-green-700 opacity-80">
-                Trạng thái sẽ cập nhật trong vài phút. Vui lòng làm mới trang nếu cần.
+                Trạng thái sẽ cập nhật trong vài giây. Vui lòng làm mới trang nếu cần.
+              </p>
+            </div>
+          )}
+          {paymentProcessing && (
+            <div className="mb-app-md rounded-app-xl border border-blue-300 bg-blue-50 px-app-md py-app-sm">
+              <p className="flex items-center gap-2 font-semibold text-blue-800">
+                <span aria-hidden>⏳</span>
+                Thanh toán đang được xử lý.
+              </p>
+              <p className="mt-0.5 text-sm text-blue-700 opacity-80">
+                Bạn sẽ nhận thông báo khi gói được kích hoạt. Quá trình thường mất vài phút.
+              </p>
+            </div>
+          )}
+          {paymentFailed && (
+            <div className="mb-app-md rounded-app-xl border border-red-300 bg-red-50 px-app-md py-app-sm">
+              <p className="flex items-center gap-2 font-semibold text-red-800">
+                <span aria-hidden>❌</span>
+                Thanh toán không thành công.
+              </p>
+              <p className="mt-0.5 text-sm text-red-700 opacity-80">
+                Vui lòng thử lại hoặc chọn phương thức thanh toán khác.
               </p>
             </div>
           )}

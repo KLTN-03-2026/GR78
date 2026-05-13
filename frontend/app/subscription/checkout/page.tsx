@@ -1,20 +1,24 @@
 'use client'
 
-import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { FormEvent, Suspense, useCallback, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { loadStripe } from '@stripe/stripe-js'
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import AppShell from '@/app/components/AppShell'
 import { SubscriptionService, type PaymentCreationResult } from '@/lib/api/subscription.service'
 import { AuthService } from '@/lib/api/auth.service'
 
 // ─── Stripe init ──────────────────────────────────────────────────────────────
 
-const STRIPE_PK =
-  'pk_test_51S58BGFEl3lRzd6m7C86MV9sPsgOdssVvGMhhMql5KFfop8kcsIVrnD1CVxvOreojy3ay0A30GL8VAJWflfxql6300Dd6GQowT'
-
-const stripePromise = loadStripe(STRIPE_PK)
+const STRIPE_PK = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ''
+if (!STRIPE_PK && typeof window !== 'undefined') {
+  console.error(
+    '[Stripe] NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set. ' +
+    'Add it to frontend/.env.local as NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...',
+  )
+}
+const stripePromise = STRIPE_PK ? loadStripe(STRIPE_PK) : null
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -24,18 +28,22 @@ function formatPrice(amount: number) {
 
 const CYCLE_LABEL: Record<string, string> = { monthly: 'Hàng tháng', annual: 'Hàng năm' }
 
-// ─── CardElement appearance ───────────────────────────────────────────────────
-
-const CARD_ELEMENT_STYLE = {
-  style: {
-    base: {
-      color: '#1d1b20',
-      fontFamily: '"Roboto", "Helvetica Neue", sans-serif',
-      fontSize: '15px',
-      fontSmoothing: 'antialiased',
-      '::placeholder': { color: '#49454f' },
-    },
-    invalid: { color: '#b3261e', iconColor: '#b3261e' },
+// Stripe Elements appearance — matches the app's design tokens
+const ELEMENTS_APPEARANCE: import('@stripe/stripe-js').Appearance = {
+  theme: 'stripe',
+  variables: {
+    fontFamily: '"Roboto", "Helvetica Neue", sans-serif',
+    fontSizeBase: '15px',
+    borderRadius: '10px',
+    colorPrimary: '#6750a4',
+    colorText: '#1d1b20',
+    colorTextPlaceholder: '#49454f',
+    colorDanger: '#b3261e',
+  },
+  rules: {
+    '.Input': { border: '1px solid #cac4d0', boxShadow: 'none' },
+    '.Input:focus': { border: '1px solid #6750a4', boxShadow: '0 0 0 2px rgba(103,80,164,0.12)' },
+    '.Label': { color: '#49454f', fontWeight: '500' },
   },
 }
 
@@ -52,40 +60,49 @@ function CheckoutForm({ result, planName, billingCycle }: CheckoutFormProps) {
   const stripe = useStripe()
   const elements = useElements()
 
-  const [cardComplete, setCardComplete] = useState(false)
+  const [ready, setReady] = useState(false)
+  const [complete, setComplete] = useState(false)
   const [paying, setPaying] = useState(false)
   const [stripeError, setStripeError] = useState('')
   const [succeeded, setSucceeded] = useState(false)
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    if (!stripe || !elements) return
-    if (!cardComplete) return
-
-    const cardElement = elements.getElement(CardElement)
-    if (!cardElement) return
+    if (!stripe || !elements || !ready || !complete) return
 
     setPaying(true)
     setStripeError('')
 
-    const { error, paymentIntent } = await stripe.confirmCardPayment(result.clientSecret, {
-      payment_method: { card: cardElement },
+    const { error, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        // Stripe redirects here for 3DS / bank-redirect payment methods
+        return_url: `${window.location.origin}/subscription/return`,
+      },
+      // Cards that don't require redirect succeed immediately without a page change
+      redirect: 'if_required',
     })
 
     if (error) {
-      setStripeError(error.message ?? 'Thanh toán thất bại. Vui lòng thử lại.')
+      // Immediate decline or validation error — no redirect occurred
+      const msg =
+        error.type === 'validation_error'
+          ? error.message ?? 'Thông tin thanh toán không hợp lệ.'
+          : error.message ?? 'Thanh toán thất bại. Vui lòng thử lại.'
+      setStripeError(msg)
       setPaying(false)
       return
     }
 
-    if (paymentIntent?.status === 'succeeded' || paymentIntent?.status === 'processing') {
+    // paymentIntent is defined here (redirect: 'if_required' + immediate result)
+    if (paymentIntent?.status === 'succeeded') {
       setSucceeded(true)
-      // Short delay so user sees the success state, then redirect
-      setTimeout(() => {
-        router.push('/subscription?payment=success')
-      }, 2200)
+      setTimeout(() => router.push('/subscription?payment=success'), 2000)
+    } else if (paymentIntent?.status === 'processing') {
+      setSucceeded(true)
+      setTimeout(() => router.push('/subscription?payment=processing'), 2000)
     } else {
-      setStripeError('Thanh toán chưa hoàn tất. Vui lòng thử lại.')
+      setStripeError('Thanh toán chưa hoàn tất. Vui lòng thử lại hoặc chọn phương thức khác.')
       setPaying(false)
     }
   }
@@ -110,7 +127,7 @@ function CheckoutForm({ result, planName, billingCycle }: CheckoutFormProps) {
       {/* Order summary */}
       <div className="rounded-app-xl border border-outline-variant/60 bg-surface">
         <div className="border-b border-outline-variant/40 px-app-md py-app-sm">
-          <p className="text-sm font-semibold text-foreground-muted uppercase tracking-wide">
+          <p className="text-sm font-semibold uppercase tracking-wide text-foreground-muted">
             Tóm tắt đơn hàng
           </p>
         </div>
@@ -142,38 +159,33 @@ function CheckoutForm({ result, planName, billingCycle }: CheckoutFormProps) {
         </div>
       </div>
 
-      {/* Card input */}
+      {/* Payment Element — handles cards, Apple Pay, Google Pay, etc. */}
       <div className="rounded-app-xl border border-outline-variant/60 bg-surface">
         <div className="border-b border-outline-variant/40 px-app-md py-app-sm">
-          <p className="text-sm font-semibold text-foreground-muted uppercase tracking-wide">
-            Thông tin thẻ
+          <p className="text-sm font-semibold uppercase tracking-wide text-foreground-muted">
+            Thông tin thanh toán
           </p>
         </div>
         <div className="px-app-md py-app-md">
-          <div
-            className={`rounded-app-lg border px-app-sm py-3 transition-[border-color] ${
-              stripeError
-                ? 'border-app-error/70 bg-red-50/30'
-                : cardComplete
-                ? 'border-brand/50 bg-brand-tint/10'
-                : 'border-outline-variant/80 bg-surface-lowest'
-            }`}
-          >
-            <CardElement
-              options={CARD_ELEMENT_STYLE}
-              onChange={(e) => {
-                setCardComplete(e.complete)
-                if (e.error) setStripeError(e.error.message ?? '')
-                else setStripeError('')
-              }}
-            />
-          </div>
+          <PaymentElement
+            onReady={() => setReady(true)}
+            onChange={(e) => {
+              setComplete(e.complete)
+              if (!e.complete) setStripeError('')
+            }}
+          />
 
           {stripeError && (
-            <p className="mt-2 text-sm text-app-error" role="alert">{stripeError}</p>
+            <p className="mt-3 text-sm text-app-error" role="alert">{stripeError}</p>
           )}
 
-          {/* Test mode hint */}
+          {!ready && (
+            <div className="mt-3 flex items-center gap-2 text-xs text-foreground-muted">
+              <span className="h-3.5 w-3.5 animate-spin rounded-full border border-foreground-muted border-t-transparent" />
+              Đang tải phương thức thanh toán...
+            </div>
+          )}
+
           <p className="mt-app-sm text-center text-xs text-foreground-muted">
             Thẻ thử nghiệm:{' '}
             <span className="font-mono font-semibold text-foreground">4242 4242 4242 4242</span>
@@ -185,8 +197,8 @@ function CheckoutForm({ result, planName, billingCycle }: CheckoutFormProps) {
       {/* Submit */}
       <button
         type="submit"
-        disabled={!stripe || !cardComplete || paying}
-        className="w-full rounded-app-lg bg-brand py-3.5 text-base font-bold text-white shadow-sm transition-all hover:bg-brand-dark active:scale-[.98] disabled:opacity-60 disabled:cursor-not-allowed"
+        disabled={!stripe || !ready || !complete || paying}
+        className="w-full rounded-app-lg bg-brand py-3.5 text-base font-bold text-white shadow-sm transition-all hover:bg-brand-dark active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {paying ? (
           <span className="flex items-center justify-center gap-2">
@@ -203,8 +215,9 @@ function CheckoutForm({ result, planName, billingCycle }: CheckoutFormProps) {
         <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20" aria-hidden>
           <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
         </svg>
-        Được bảo mật bởi{' '}
+        Bảo mật bởi{' '}
         <span className="font-semibold text-[#635bff]">Stripe</span>
+        {' '}· Dữ liệu thẻ được mã hóa TLS
       </p>
     </form>
   )
@@ -212,7 +225,7 @@ function CheckoutForm({ result, planName, billingCycle }: CheckoutFormProps) {
 
 // ─── Page shell ───────────────────────────────────────────────────────────────
 
-export default function CheckoutPage() {
+function CheckoutPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -235,7 +248,6 @@ export default function CheckoutPage() {
     setHasPending(false)
 
     try {
-      // Fetch plan info for display (use plans list)
       const [plans, paymentResult] = await Promise.all([
         SubscriptionService.getPlans(),
         SubscriptionService.subscribe(planId, discountCode),
@@ -247,8 +259,13 @@ export default function CheckoutPage() {
       setResult(paymentResult)
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Không thể khởi tạo thanh toán'
-      // Backend throws "pending payment exists" with 409
-      if (msg.toLowerCase().includes('pending') || msg.includes('409') || msg.includes('Conflict')) {
+      // Only show the "pending" UI for the explicit conflict the backend still throws
+      // when a PENDING payment exists but Stripe PI retrieval failed
+      if (
+        msg.toLowerCase().includes('pending payment') ||
+        msg.toLowerCase().includes('thanh toán đang chờ') ||
+        msg.includes('PENDING_PAYMENT_EXISTS')
+      ) {
         setHasPending(true)
       } else {
         setInitError(msg)
@@ -283,10 +300,18 @@ export default function CheckoutPage() {
     }
   }
 
+  // Elements options — clientSecret is required for PaymentElement
+  const elementsOptions = result
+    ? {
+        clientSecret: result.clientSecret,
+        locale: 'vi' as const,
+        appearance: ELEMENTS_APPEARANCE,
+      }
+    : undefined
+
   return (
     <AppShell>
       <div className="min-h-screen bg-surface-lowest">
-
         <main className="app-container max-w-lg py-app-md">
           {/* Back */}
           <Link
@@ -301,14 +326,14 @@ export default function CheckoutPage() {
 
           <h1 className="mb-app-md text-xl font-bold text-foreground">Thanh toán</h1>
 
-          {/* Pending payment conflict */}
+          {/* Pending payment conflict (only when Stripe PI retrieval failed on backend) */}
           {hasPending && !loading && (
             <div className="rounded-app-xl border border-amber-300 bg-amber-50 p-app-md">
               <p className="font-semibold text-amber-800">
                 ⚠️ Bạn đang có thanh toán chưa hoàn tất
               </p>
               <p className="mt-1 text-sm text-amber-700">
-                Hủy thanh toán cũ để tiếp tục với gói đã chọn.
+                Hủy thanh toán cũ để tiến hành đăng ký mới với gói đã chọn.
               </p>
               <div className="mt-app-sm flex gap-app-sm">
                 <Link
@@ -352,18 +377,29 @@ export default function CheckoutPage() {
             </div>
           )}
 
-          {/* Loading */}
+          {/* Loading skeleton */}
           {loading && (
             <div className="space-y-app-md">
               <div className="h-40 animate-pulse rounded-app-xl bg-surface-highest" />
-              <div className="h-28 animate-pulse rounded-app-xl bg-surface-highest" />
+              <div className="h-48 animate-pulse rounded-app-xl bg-surface-highest" />
               <div className="h-14 animate-pulse rounded-app-lg bg-surface-highest" />
             </div>
           )}
 
-          {/* Stripe Elements + form */}
-          {!loading && result && (
-            <Elements stripe={stripePromise}>
+          {/* Stripe key missing — config error, show clear message */}
+          {!loading && !stripePromise && (
+            <div className="rounded-app-xl border border-app-error/30 bg-red-50 p-app-md">
+              <p className="font-semibold text-app-error">Cấu hình thanh toán chưa hoàn tất</p>
+              <p className="mt-1 text-sm text-app-error/80">
+                Biến môi trường <code className="font-mono">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> chưa được thiết lập.
+                Vui lòng liên hệ quản trị viên.
+              </p>
+            </div>
+          )}
+
+          {/* Stripe Elements + PaymentElement form */}
+          {!loading && result && elementsOptions && stripePromise && (
+            <Elements stripe={stripePromise} options={elementsOptions}>
               <CheckoutForm
                 result={result}
                 planName={planName}
@@ -374,5 +410,23 @@ export default function CheckoutPage() {
         </main>
       </div>
     </AppShell>
+  )
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell>
+          <div className="app-container max-w-lg py-app-md space-y-app-md">
+            <div className="h-6 w-32 animate-pulse rounded bg-surface-highest" />
+            <div className="h-40 animate-pulse rounded-app-xl bg-surface-highest" />
+            <div className="h-48 animate-pulse rounded-app-xl bg-surface-highest" />
+          </div>
+        </AppShell>
+      }
+    >
+      <CheckoutPageInner />
+    </Suspense>
   )
 }
